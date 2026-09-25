@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Night Sip — Cocktail Diary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Shippori+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   NIGHT SIP — cocktail diary  (single-file prototype)
+   ============================================================ */
+
+/* ---------- MODE: Bar Counter (default) ---------- */
+:root, [data-theme="bar"] {
+  --bg:          #0d0906;
+  --bg-2:        #17100a;
+  --sky:         linear-gradient(180deg, #241609 0%, #150d07 42%, #0d0906 100%);
+  --panel:       rgba(58, 38, 18, .34);
+  --panel-2:     rgba(84, 56, 26, .30);
+  --line:        rgba(212, 168, 96, .26);
+  --line-strong: rgba(226, 184, 112, .62);
+  --gold:        #e5be76;
+  --gold-2:      #c8964a;
+  --text:        #f4e9d6;
+  --dim:         #d3c2a4;
+  --faint:       #b6a488;
+  --glow:        0 0 34px rgba(229, 190, 118, .20);
+  --glass-line:  rgba(250, 236, 210, .62);
+  --bokeh-a:     rgba(255, 196, 96, .30);
+  --bokeh-b:     rgba(255, 150, 60, .18);
+  --sw1:#3a2415; --sw2:#7a4a1e; --sw3:#c8913f; --sw4:#e8d3a8;
+}
+/* ---------- MODE: Moon & Stars ---------- */
+[data-theme="moon"] {
+  --bg:          #060a1a;
+  --bg-2:        #0b1330;
+  --sky:         linear-gradient(180deg, #1c2a5c 0%, #0c1330 45%, #060a1a 100%);
+  --panel:       rgba(60, 80, 150, .22);
+  --panel-2:     rgba(80, 104, 180, .22);
+  --line:        rgba(170, 196, 255, .24);
+  --line-strong: rgba(200, 216, 255, .60);
+  --gold:        #d9c8ff;
+  --gold-2:      #9db4ee;
+  --text:        #ecf1ff;
+  --dim:         #c3cfec;
+  --faint:       #a3b0d0;
+  --glow:        0 0 40px rgba(180, 196, 255, .24);
+  --glass-line:  rgba(232, 240, 255, .66);
+  --bokeh-a:     rgba(180, 200, 255, .26);
+  --bokeh-b:     rgba(120, 200, 255, .16);
+  --sw1:#2a3a72; --sw2:#4a5da8; --sw3:#8fa2dd; --sw4:#e0d3b4;
+}
+/* ---------- MODE: City Night ---------- */
+[data-theme="city"] {
+  --bg:          #08060d;
+  --bg-2:        #130b1b;
+  --sky:         linear-gradient(180deg, #2a1030 0%, #150a1e 45%, #08060d 100%);
+  --panel:       rgba(90, 40, 90, .24);
+  --panel-2:     rgba(120, 50, 110, .24);
+  --line:        rgba(232, 140, 200, .26);
+  --line-strong: rgba(255, 170, 220, .60);
+  --gold:        #f0a8cf;
+  --gold-2:      #d4749f;
+  --text:        #f8ecf6;
+  --dim:         #d9c3d3;
+  --faint:       #bda3b4;
+  --glow:        0 0 34px rgba(240, 140, 200, .28);
+  --glass-line:  rgba(255, 238, 250, .64);
+  --bokeh-a:     rgba(255, 140, 210, .26);
+  --bokeh-b:     rgba(90, 220, 240, .18);
+  --sw1:#5e1f45; --sw2:#26304f; --sw3:#c0417f; --sw4:#6b5566;
+}
+
+/* Webフォントが読めない環境でも明朝で見えるようフォールバックを積んでおく */
+:root {
+  --f-en: 'Cormorant Garamond', 'Cormorant', 'Hiragino Mincho ProN', 'Times New Roman', serif;
+  --f-jp: 'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'MS PMincho', serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  font-family: var(--f-jp);
+  font-weight: 400; font-size: 15px; line-height: 1.85; letter-spacing: .04em;
+  color: var(--text);
+  background: var(--bg);
+  background-image: var(--sky);
+  background-attachment: fixed;
+  /* 明朝は antialiased だと線が痩せるので既定のまま描画する */
+  transition: background-color .7s ease, color .5s ease;
+}
+#sky { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+.serif   { font-family: var(--f-en); }
+.mincho  { font-family: var(--f-jp); }
+
+.app {
+  position: relative; z-index: 1;
+  max-width: 430px; margin: 0 auto; min-height: 100%;
+  padding: 0 18px calc(104px + env(safe-area-inset-bottom));
+}
+
+/* ---------- masthead ---------- */
+.masthead { text-align: center; padding: 26px 0 4px; }
+.logo {
+  font-family: var(--f-en); font-weight: 400; font-style: italic;
+  font-size: 40px; line-height: 1; letter-spacing: .02em;
+  background: linear-gradient(180deg, var(--text) 0%, var(--gold) 55%, var(--gold-2) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 18px rgba(229,190,118,.22));
+}
+.logo-sub {
+  font-family: var(--f-en);
+  font-size: 10.5px; letter-spacing: .48em; text-indent: .48em;
+  color: var(--gold-2); margin-top: 6px; text-transform: uppercase;
+}
+.tagline { font-family: 'Shippori Mincho', serif; font-size: 12.5px; color: var(--dim); margin-top: 12px; letter-spacing: .16em; }
+
+.hairline { height: 1px; background: linear-gradient(90deg, transparent, var(--line), transparent); margin: 20px 0 4px; }
+
+/* ---------- screen heading ---------- */
+.screen-head { text-align: center; padding: 20px 0 22px; }
+.screen-num {
+  font-family: var(--f-en); font-size: 20px;
+  color: var(--gold); letter-spacing: .1em; margin-right: 10px;
+}
+.screen-title { font-weight: 500; font-size: 17px; letter-spacing: .12em; }
+.screen-sub { font-size: 12.5px; color: var(--dim); letter-spacing: .08em; margin-top: 6px; }
+
+/* ---------- panel ---------- */
+.panel {
+  position: relative;
+  border: 1px solid var(--line); border-radius: 22px;
+  background: linear-gradient(180deg, var(--panel), rgba(0,0,0,.28));
+  backdrop-filter: blur(8px);
+  box-shadow: 0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+  padding: 24px 18px;
+}
+.panel + .panel { margin-top: 16px; }
+
+/* ---------- screens ---------- */
+.screen { display: none; }
+.screen.active { display: block; animation: rise .55s cubic-bezier(.22,.9,.28,1) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.ask-jp { font-family: var(--f-en); font-size: 27px; line-height: 1.35; text-align: center; font-style: italic; }
+.ask-sub { text-align: center; font-size: 12px; color: var(--dim); letter-spacing: .14em; margin: 10px 0 26px; }
+
+/* ---------- mood circles ---------- */
+.mood-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 16px 14px; justify-items: center;
+}
+.mood-grid .last { grid-column: 1 / -1; }
+.mood {
+  width: 128px; height: 128px; border-radius: 50%;
+  border: 1px solid var(--line);
+  background: radial-gradient(circle at 50% 34%, var(--panel-2), rgba(0,0,0,.30) 76%);
+  color: var(--text); font-family: inherit; font-weight: 400; font-size: 13px; line-height: 1.6;
+  cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .28s cubic-bezier(.2,.9,.3,1), box-shadow .28s, border-color .28s;
+}
+.mood:hover, .mood:focus-visible {
+  transform: translateY(-4px) scale(1.03);
+  border-color: var(--line-strong); box-shadow: var(--glow); outline: none;
+}
+.mood svg { width: 26px; height: 26px; stroke: var(--gold); fill: none; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+.mood b { font-weight: 400; letter-spacing: .06em; }
+
+/* ---------- free text ---------- */
+.free {
+  margin-top: 22px; padding: 18px 16px;
+  border: 1px dashed var(--line); border-radius: 18px; background: rgba(0,0,0,.20);
+}
+.free .lead { font-size: 12px; color: var(--dim); text-align: center; margin-bottom: 12px; letter-spacing: .08em; }
+textarea, input[type=text], input[type=date], select {
+  width: 100%; font-family: inherit; font-weight: 400; font-size: 14px; color: var(--text);
+  background: rgba(0,0,0,.34); border: 1px solid var(--line); border-radius: 12px;
+  padding: 11px 13px; resize: vertical;
+}
+input[type=date] { color-scheme: dark; }
+textarea:focus, input:focus, select:focus { outline: none; border-color: var(--line-strong); box-shadow: var(--glow); }
+select option { background: var(--bg-2); color: var(--text); }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  width: 100%; padding: 14px 20px; margin-top: 14px;
+  font-weight: 500; font-size: 15px; letter-spacing: .18em;
+  color: var(--gold); background: linear-gradient(180deg, rgba(229,190,118,.13), rgba(229,190,118,.04));
+  border: 1px solid var(--line-strong); border-radius: 999px; cursor: pointer;
+  transition: box-shadow .25s, transform .2s, background .25s;
+}
+.btn:hover { box-shadow: var(--glow); transform: translateY(-1px); background: linear-gradient(180deg, rgba(229,190,118,.22), rgba(229,190,118,.07)); }
+.btn svg { width: 17px; height: 17px; stroke: var(--gold); fill: none; stroke-width: 1.2; }
+.btn.sm { width: auto; padding: 8px 18px; font-size: 12.5px; letter-spacing: .1em; margin-top: 0; }
+.btn.plain { border-color: var(--line); color: var(--dim); background: transparent; }
+
+.backlink {
+  display: inline-flex; align-items: center; gap: 8px; background: none; border: none;
+  color: var(--dim); font-family: inherit; font-size: 13px; cursor: pointer; padding: 0;
+}
+.backlink:hover { color: var(--gold); }
+
+/* ---------- master's line ---------- */
+.master { text-align: center; margin: 0 0 22px; }
+.master .who {
+  font-family: var(--f-en); font-style: italic; font-size: 12px;
+  letter-spacing: .32em; color: var(--gold-2); margin-bottom: 9px;
+}
+.master .line { font-family: 'Shippori Mincho', serif; font-size: 14px; line-height: 2; color: var(--dim); }
+.master .rule { width: 34px; height: 1px; background: var(--line-strong); margin: 14px auto 0; }
+
+/* ---------- cocktail card ---------- */
+.cocktail {
+  border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+  background: linear-gradient(180deg, var(--panel), rgba(0,0,0,.34));
+  margin-bottom: 16px;
+  transition: border-color .3s, transform .3s, box-shadow .3s;
+}
+.cocktail:hover { border-color: var(--line-strong); transform: translateY(-2px); box-shadow: var(--glow); }
+
+/* photo-like frame (SVG illustration + bokeh) */
+.frame {
+  position: relative; aspect-ratio: 3 / 2; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 118%, var(--bokeh-b), transparent 62%), #06040a;
+  display: grid; place-items: center;
+}
+.frame .bokeh { position: absolute; border-radius: 50%; filter: blur(7px); opacity: .55; }
+.frame .halo {
+  position: absolute; width: 62%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle, var(--bokeh-a), transparent 66%); filter: blur(12px);
+}
+.frame svg.glass { position: relative; filter: drop-shadow(0 8px 22px rgba(0,0,0,.7)); }
+.frame::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.55));
+}
+
+.c-body { padding: 18px 18px 20px; }
+.c-name { font-family: var(--f-en); font-size: 25px; line-height: 1.1; color: var(--text); }
+.c-kana { font-size: 12px; color: var(--dim); letter-spacing: .1em; margin-top: 4px; }
+.c-word {
+  font-family: 'Shippori Mincho', serif; font-size: 12.5px; color: var(--gold);
+  margin-top: 10px; letter-spacing: .08em;
+}
+.c-desc { font-size: 13px; line-height: 1.95; color: var(--dim); margin: 12px 0 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  font-size: 11px; letter-spacing: .04em; padding: 4px 11px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--gold-2); background: rgba(0,0,0,.2);
+}
+.meters { margin: 15px 0 0; }
+.meter { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--faint); margin-bottom: 7px; letter-spacing: .1em; }
+.meter .t { width: 34px; }
+.meter .bar { flex: 1; height: 2px; background: rgba(255,255,255,.10); border-radius: 2px; overflow: hidden; }
+.meter .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-2), var(--gold)); }
+
+/* ---------- form rows ---------- */
+.form-title {
+  font-weight: 500; font-size: 14px; letter-spacing: .14em;
+  margin: 4px 0 18px; color: var(--text);
+}
+.frow { display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center; margin-bottom: 12px; }
+.frow > label { font-size: 12px; color: var(--dim); letter-spacing: .08em; }
+.frow.top { align-items: start; }
+.frow.top > label { padding-top: 10px; }
+
+.photo-row { display: flex; gap: 10px; align-items: center; }
+.photo-thumb {
+  width: 62px; height: 62px; border-radius: 12px; object-fit: cover;
+  border: 1px solid var(--line); display: block;
+}
+.photo-add {
+  width: 62px; height: 62px; border-radius: 12px; border: 1px dashed var(--line);
+  background: rgba(0,0,0,.2); color: var(--gold); font-size: 22px; cursor: pointer;
+  display: grid; place-items: center; font-weight: 400;
+}
+.photo-add:hover { border-color: var(--line-strong); box-shadow: var(--glow); }
+
+.stars { display: flex; gap: 8px; }
+.star { background: none; border: none; padding: 0; cursor: pointer; line-height: 1; }
+.star svg { width: 22px; height: 22px; stroke: var(--faint); fill: none; stroke-width: 1.1; transition: .18s; }
+.star.on svg { stroke: var(--gold); fill: var(--gold); }
+
+/* ---------- calendar ---------- */
+.cal-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.cal-title { font-family: var(--f-en); font-size: 24px; letter-spacing: .06em; display: flex; align-items: center; gap: 10px; }
+.cal-title svg { width: 15px; height: 15px; stroke: var(--gold); fill: none; stroke-width: 1.1; }
+.arrow {
+  width: 34px; height: 34px; border-radius: 50%; background: transparent;
+  border: 1px solid var(--line); color: var(--gold); cursor: pointer; font-size: 15px;
+}
+.arrow:hover { border-color: var(--line-strong); box-shadow: var(--glow); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.dow { text-align: center; font-family: var(--f-en); font-weight: 500; font-size: 12px; letter-spacing: .1em; color: var(--dim); padding-bottom: 10px; }
+.day {
+  aspect-ratio: 1; background: none; border: none; cursor: default; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  font-family: var(--f-en); font-size: 16px; color: var(--text);
+}
+.day.out { color: var(--faint); opacity: .45; }
+.day .num { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; transition: .2s; }
+.day.has { cursor: pointer; }
+.day.has:hover .num { background: rgba(255,255,255,.07); }
+.day.sel .num { background: var(--gold); color: #150d05; box-shadow: var(--glow); }
+.day .dots { display: flex; gap: 3px; height: 5px; }
+.day .dot { width: 5px; height: 5px; border-radius: 50%; }
+
+/* ---------- record row (calendar detail) ---------- */
+.rec-date {
+  font-weight: 500; font-size: 13.5px; letter-spacing: .12em; margin: 22px 0 12px; color: var(--text);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.moon-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 400; color: var(--dim); letter-spacing: .08em; }
+.rec {
+  display: flex; gap: 14px; padding: 14px;
+  border: 1px solid var(--line); border-radius: 18px; background: rgba(0,0,0,.24);
+  margin-bottom: 12px; align-items: flex-start;
+}
+.rec .thumb { flex: 0 0 84px; height: 84px; border-radius: 12px; overflow: hidden; background: #06040a; display: grid; place-items: center; }
+.rec .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rec .info { flex: 1; min-width: 0; }
+.rec .rn { font-family: var(--f-en); font-size: 19px; line-height: 1.2; }
+.rec .rb { font-size: 11.5px; color: var(--dim); display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+.rec .rb svg { width: 11px; height: 11px; stroke: var(--gold-2); fill: none; stroke-width: 1.3; }
+.rec .rmemo { font-size: 12px; color: var(--dim); line-height: 1.8; margin-top: 8px; }
+.rec .rstars { color: var(--gold); font-size: 12px; letter-spacing: .22em; margin-top: 7px; }
+.mood-chip {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+  font-size: 11px; padding: 3px 11px; border-radius: 999px; border: 1px solid currentColor;
+}
+.del { background: none; border: none; color: var(--faint); font-size: 11px; cursor: pointer; padding: 4px 0 0; }
+.del:hover { color: var(--gold); }
+
+.stats { display: flex; gap: 10px; margin-top: 18px; }
+.stat { flex: 1; text-align: center; padding: 14px 6px; border: 1px solid var(--line); border-radius: 16px; background: rgba(0,0,0,.2); }
+.stat b { display: block; font-family: var(--f-en); font-size: 27px; color: var(--gold); font-weight: 400; }
+.stat span { font-size: 10.5px; letter-spacing: .16em; color: var(--dim); }
+
+.empty { text-align: center; color: var(--faint); font-size: 13px; line-height: 2.2; padding: 34px 10px; }
+
+/* ---------- mode cards ---------- */
+.mode-heading {
+  text-align: center; font-weight: 500; font-size: 15px;
+  letter-spacing: .3em; margin: 6px 0 20px; color: var(--text);
+}
+.mode-heading::before, .mode-heading::after { content: '✧'; color: var(--gold); margin: 0 12px; font-size: 12px; }
+.mode-card {
+  position: relative; border: 1px solid var(--line); border-radius: 20px;
+  overflow: hidden; margin-bottom: 14px; cursor: pointer; text-align: left;
+  width: 100%; padding: 0; font-family: inherit; color: var(--text);
+  transition: border-color .3s, transform .3s, box-shadow .3s;
+}
+.mode-card:hover { transform: translateY(-3px); box-shadow: var(--glow); }
+.mode-card.on { border-color: var(--line-strong); box-shadow: var(--glow); }
+.mode-scene { height: 108px; position: relative; }
+.mode-scene.bar   { background: radial-gradient(70% 130% at 20% 0%, #6b4318 0%, #2a1a0c 55%, #140c06 100%); }
+.mode-scene.moon  { background: radial-gradient(60% 120% at 75% 15%, #4a5da8 0%, #1a2450 50%, #080d22 100%); }
+.mode-scene.city  { background: linear-gradient(180deg, #3a1440 0%, #1a0d26 60%, #0a0610 100%); }
+.mode-scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mode-body { padding: 14px 16px 16px; background: rgba(0,0,0,.36); }
+.mode-en { font-family: var(--f-en); font-size: 19px; letter-spacing: .06em; }
+.mode-jp { font-size: 11.5px; color: var(--dim); margin-top: 2px; letter-spacing: .1em; }
+.mode-desc { font-size: 12px; color: var(--dim); line-height: 1.85; margin-top: 8px; }
+.mode-moon {
+  display: flex; align-items: center; gap: 9px; margin-top: 11px;
+  padding-top: 11px; border-top: 1px solid var(--line);
+  font-size: 11.5px; color: var(--dim); letter-spacing: .06em;
+}
+.mode-moon b { font-weight: 500; color: var(--gold); }
+.swatches { display: flex; gap: 7px; margin-top: 12px; }
+.sw { width: 17px; height: 17px; border-radius: 50%; border: 1px solid rgba(255,255,255,.14); }
+.mode-check {
+  position: absolute; top: 12px; right: 12px; width: 24px; height: 24px; border-radius: 50%;
+  border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 12px;
+  color: transparent; background: rgba(0,0,0,.3);
+}
+.mode-card.on .mode-check { background: var(--gold); color: #150d05; border-color: var(--gold); }
+
+/* ---------- collection ---------- */
+.coll { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.coll-item { text-align: center; border: 1px solid var(--line); border-radius: 14px; padding: 10px 4px 8px; background: rgba(0,0,0,.2); }
+.coll-item .n { font-size: 10.5px; color: var(--dim); margin-top: 4px; line-height: 1.4; }
+.coll-item .c { font-family: var(--f-en); font-size: 12px; color: var(--gold); }
+
+/* ---------- bottom nav ---------- */
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
+  display: flex; max-width: 430px; margin: 0 auto;
+  padding: 12px 10px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, var(--bg) 46%);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line);
+}
+.nav button {
+  flex: 1; background: none; border: none; cursor: pointer; padding: 4px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  font-family: var(--f-en); font-size: 11px; letter-spacing: .1em;
+  color: var(--faint); transition: color .25s;
+}
+.nav button svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+.nav button.active { color: var(--gold); }
+.nav button.active::after { content: ''; width: 14px; height: 1px; background: var(--gold); }
+
+/* ---------- footer ---------- */
+.footer { text-align: center; padding: 34px 0 10px; }
+.footer .gn {
+  font-family: var(--f-en); font-style: italic; font-size: 22px; line-height: 1.5;
+  color: var(--gold-2); opacity: .85;
+}
+.note { font-size: 11.5px; color: var(--faint); line-height: 2; text-align: center; margin-top: 16px; }
+
+/* ---------- toast ---------- */
+#toast {
+  position: fixed; left: 50%; bottom: 108px; transform: translate(-50%, 14px);
+  padding: 11px 24px; border-radius: 999px; font-size: 13px; letter-spacing: .08em;
+  background: var(--gold); color: #150d05; opacity: 0; pointer-events: none;
+  transition: .3s; z-index: 30; box-shadow: var(--glow); font-family: 'Shippori Mincho', serif;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body data-theme="bar">
+<canvas id="sky"></canvas>
+
+<div class="app">
+
+  <header class="masthead">
+    <div class="logo">Night Sip</div>
+    <div class="logo-sub">Cocktail Diary</div>
+    <div class="tagline">その一杯が、特別な夜をつくる。</div>
+    <div class="hairline"></div>
+  </header>
+
+  <!-- ============ ① 気分を選ぶ ============ -->
+  <section id="s-mood" class="screen active">
+    <div class="screen-head">
+      <span class="screen-num">01</span><span class="screen-title">気分を選ぶ</span>
+      <div class="screen-sub">今の気分にぴったりのカクテルを探そう</div>
+    </div>
+
+    <div class="panel">
+      <div class="ask-jp">Tonight,<br>how do you feel?</div>
+      <div class="ask-sub">今の気分を選んでください</div>
+      <div class="mood-grid" id="moodGrid"></div>
+
+      <div class="free">
+        <div class="lead">言葉にしにくい夜は、そのまま書いてください</div>
+        <textarea id="freeMood" rows="2" placeholder="例：仕事で疲れた。甘すぎないものを、静かに飲みたい"></textarea>
+        <button class="btn" id="freeGo">
+          <svg viewBox="0 0 24 24"><path d="M5 4h14l-6 8v7l-2 1v-8z"/></svg>マスターに相談する
+        </button>
+      </div>
+    </div>
+
+    <p class="note">
+      ※ カクテル言葉には諸説あります。度数・甘さは一般的な目安で、店やレシピにより変わります。<br>
+      ※ お酒は20歳になってから。体調と量にお気をつけて。
+    </p>
+  </section>
+
+  <!-- ============ ② 提案と記録 ============ -->
+  <section id="s-suggest" class="screen">
+    <div class="screen-head">
+      <span class="screen-num">02</span><span class="screen-title">提案と記録</span>
+      <div class="screen-sub">おすすめカクテルを見て、飲んだ記録を残そう</div>
+    </div>
+
+    <div class="panel">
+      <button class="backlink" id="backMood">← 気分を選び直す</button>
+      <div class="master" id="master" style="margin-top:20px">
+        <div class="who">Master</div>
+        <div class="line"></div>
+        <div class="rule"></div>
+      </div>
+      <div id="cards"></div>
+    </div>
+
+    <div class="panel">
+      <div class="form-title">このカクテルを記録する</div>
+      <div class="frow"><label for="fName">カクテル名</label>
+        <input type="text" id="fName" list="names" placeholder="Cosmopolitan"><datalist id="names"></datalist></div>
+      <div class="frow"><label for="fBar">バー名</label><input type="text" id="fBar" placeholder="Bar Orion"></div>
+      <div class="frow"><label for="fDate">飲んだ日</label><input type="date" id="fDate"></div>
+      <div class="frow"><label for="fMood">気分</label><select id="fMood"></select></div>
+      <div class="frow top"><label>写真</label>
+        <div class="photo-row">
+          <img id="photoThumb" class="photo-thumb" hidden alt="選択した写真">
+          <button class="photo-add" id="photoAdd" aria-label="写真を追加">＋</button>
+          <input type="file" id="fPhoto" accept="image/*" hidden>
+        </div>
+      </div>
+      <div class="frow top"><label for="fMemo">メモ（任意）</label>
+        <textarea id="fMemo" rows="2" placeholder="雰囲気も音楽も最高だった。&#10;大切な友人と乾杯。"></textarea></div>
+      <div class="frow"><label>評価</label><div class="stars" id="fStars"></div></div>
+      <button class="btn" id="save">
+        <svg viewBox="0 0 24 24"><path d="M5 4h14l-6 8v7l-2 1v-8z"/></svg>記録する
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ ③ カレンダー ============ -->
+  <section id="s-cal" class="screen">
+    <div class="screen-head">
+      <span class="screen-num">03</span><span class="screen-title">カレンダー</span>
+      <div class="screen-sub">カレンダーから記録を振り返ろう</div>
+    </div>
+
+    <div class="panel">
+      <div class="cal-bar">
+        <button class="arrow" id="prev" aria-label="前の月">‹</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button class="arrow" id="next" aria-label="次の月">›</button>
+      </div>
+      <div class="cal-grid" id="dow"></div>
+      <div class="cal-grid" id="days"></div>
+      <div class="stats">
+        <div class="stat"><b id="stMonth">0</b><span>THIS MONTH</span></div>
+        <div class="stat"><b id="stTotal">0</b><span>TOTAL</span></div>
+        <div class="stat"><b id="stKinds">0</b><span>COCKTAILS</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="rec-date" id="recDate"></div>
+      <div id="recList"></div>
+    </div>
+  </section>
+
+  <!-- ============ ④ マイページ ============ -->
+  <section id="s-my" class="screen">
+    <div class="screen-head">
+      <span class="screen-num">04</span><span class="screen-title">マイページ</span>
+      <div class="screen-sub">これまでの一杯と、夜の見え方を選ぶ</div>
+    </div>
+
+    <div class="panel">
+      <div class="mode-heading">モードを選択</div>
+      <button class="mode-card" data-mode="bar">
+        <div class="mode-scene bar"><canvas></canvas></div>
+        <div class="mode-check">✓</div>
+        <div class="mode-body">
+          <div class="mode-en">Bar Counter</div>
+          <div class="mode-jp">バーカウンター</div>
+          <div class="mode-desc">温かな灯りと木の質感が<br>落ち着くクラシックなバー</div>
+          <div class="swatches"><i class="sw" style="background:#3a2415"></i><i class="sw" style="background:#7a4a1e"></i><i class="sw" style="background:#c8913f"></i><i class="sw" style="background:#e8d3a8"></i></div>
+        </div>
+      </button>
+      <button class="mode-card" data-mode="moon">
+        <div class="mode-scene moon"><canvas></canvas></div>
+        <div class="mode-check">✓</div>
+        <div class="mode-body">
+          <div class="mode-en">Moon &amp; Stars</div>
+          <div class="mode-jp">月と星</div>
+          <div class="mode-desc">月明かりと星空に包まれる<br>幻想的でロマンチックな夜</div>
+          <div class="mode-moon" id="moonToday"></div>
+          <div class="swatches"><i class="sw" style="background:#2a3a72"></i><i class="sw" style="background:#4a5da8"></i><i class="sw" style="background:#8fa2dd"></i><i class="sw" style="background:#e0d3b4"></i></div>
+        </div>
+      </button>
+      <button class="mode-card" data-mode="city">
+        <div class="mode-scene city"><canvas></canvas></div>
+        <div class="mode-check">✓</div>
+        <div class="mode-body">
+          <div class="mode-en">City Night</div>
+          <div class="mode-jp">都会の夜景</div>
+          <div class="mode-desc">きらめく夜景とネオンが<br>大人の時間を演出</div>
+          <div class="swatches"><i class="sw" style="background:#5e1f45"></i><i class="sw" style="background:#26304f"></i><i class="sw" style="background:#c0417f"></i><i class="sw" style="background:#6b5566"></i></div>
+        </div>
+      </button>
+    </div>
+
+    <div class="panel">
+      <div class="form-title">コレクション</div>
+      <div id="collection"></div>
+    </div>
+  </section>
+
+  <div class="footer">
+    <div class="gn">Good night,<br>Good sip.</div>
+  </div>
+</div>
+
+<nav class="nav">
+  <button data-go="s-mood" class="active">
+    <svg viewBox="0 0 24 24"><path d="M20.5 13.5A8.5 8.5 0 0 1 10.5 3.5a8.5 8.5 0 1 0 10 10z"/></svg>Mood</button>
+  <button data-go="s-suggest">
+    <svg viewBox="0 0 24 24"><path d="M4 4h16l-7 9v7l-2 1v-8z"/></svg>Recommend</button>
+  <button data-go="s-cal">
+    <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>Calendar</button>
+  <button data-go="s-my">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20c.9-3.8 3.9-5.8 7.4-5.8s6.5 2 7.4 5.8"/></svg>My Page</button>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   1. DATA
+   ============================================================ */
+const ICON = {
+  moon:  '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8.2 8.2 0 1 0 20 14.5z"/><path d="M17 4.2l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z"/></svg>',
+  star:  '<svg viewBox="0 0 24 24"><path d="M12 3.6l2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16.6 6.8 19.5 8 13.7 3.6 9.7l5.9-.7z"/></svg>',
+  heart: '<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-9.2A4 4 0 0 1 12 8a4 4 0 0 1 7 2.8C19 15.6 12 20 12 20z"/></svg>',
+  pour:  '<svg viewBox="0 0 24 24"><path d="M9 3h6v4.5l-1.5 2v9A1.5 1.5 0 0 1 12 20a1.5 1.5 0 0 1-1.5-1.5v-9L9 7.5z"/><path d="M17 5.5c2 1.5 2.4 3.5 1 5"/></svg>',
+  citrus:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8M3.6 12h16.8M6 6l12 12M18 6L6 18"/></svg>',
+  glass: '<svg viewBox="0 0 24 24"><path d="M4 4h16l-7 9v7l-2.6 1v-8z"/><path d="M8.6 21h6.8"/></svg>',
+  flask: '<svg viewBox="0 0 24 24"><path d="M10 3v6.2L5.4 17A2.4 2.4 0 0 0 7.5 20.6h9A2.4 2.4 0 0 0 18.6 17L14 9.2V3z"/><path d="M9 3h6M7.4 14.6h9.2"/></svg>',
+  pin:   '<svg viewBox="0 0 24 24"><path d="M12 21s6.5-6.1 6.5-10.4A6.5 6.5 0 0 0 5.5 10.6C5.5 14.9 12 21 12 21z"/><circle cx="12" cy="10.4" r="2.3"/></svg>',
+  starO: '<svg viewBox="0 0 24 24"><path d="M12 3.6l2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16.6 6.8 19.5 8 13.7 3.6 9.7l5.9-.7z"/></svg>'
+};
+
+const MOODS = [
+  { id:'relax',     jp:'リラックス<br>したい',   plain:'リラックスしたい',   en:'Relax',     icon:'moon',   color:'#8FC0AE' },
+  { id:'energetic', jp:'元気に<br>なりたい',     plain:'元気になりたい',     en:'Energize',  icon:'star',   color:'#F2B45C' },
+  { id:'sweet',     jp:'甘い気分',               plain:'甘い気分',           en:'Sweet',     icon:'heart',  color:'#E8A0BF' },
+  { id:'mature',    jp:'大人っぽく<br>過ごしたい', plain:'大人っぽく過ごしたい', en:'Mature',  icon:'pour',   color:'#A796DC' },
+  { id:'refresh',   jp:'さっぱり<br>飲みたい',   plain:'さっぱり飲みたい',   en:'Refresh',   icon:'citrus', color:'#7FD2A0' },
+  { id:'special',   jp:'特別な夜に',             plain:'特別な夜に',         en:'Special',   icon:'glass',  color:'#E5BE76' },
+  { id:'challenge', jp:'新しい味に<br>出会いたい', plain:'新しい味に出会いたい', en:'Discover', icon:'flask', color:'#E8776F' }
+];
+const MOOD_BY_ID = Object.fromEntries(MOODS.map(m => [m.id, m]));
+
+const TAG_JP = {
+  citrus:'柑橘', soda:'炭酸', sweet:'甘め', dry:'辛口', bitter:'ほろ苦', strong:'強め',
+  light:'軽やか', easy:'飲みやすい', beginner:'初心者向け', classic:'定番', fruit:'フルーティー',
+  creamy:'まろやか', coffee:'コーヒー', mint:'ミント', herb:'ハーブ', spicy:'ジンジャー',
+  salt:'塩', whisky:'ウイスキー', wine:'ワイン', beer:'ビール', sparkling:'泡',
+  celebration:'お祝い', photo:'写真映え', colorful:'華やか', night:'大人の夜', slow:'ゆっくり',
+  modern:'モダン', elegant:'上品', aperitif:'食前に', dessert:'デザート', summer:'夏の夜',
+  nonalcohol:'ノンアル', last:'締めの一杯', sentimental:'しっとり', bright:'明るい'
+};
+
+/* glass: martini|coupe|rocks|highball|flute|hurricane|mug|wine  /  sweet・abv は 0-5 の目安 */
+const COCKTAILS = [
+  { n:'Cosmopolitan', jp:'コスモポリタン', w:'愛の告白', base:'ウォッカ', sweet:3, abv:3, glass:'coupe',
+    c1:'#E2566E', c2:'#9E1F3C', garnish:'lemon',
+    d:'華やかで洗練された一杯。気分を上げたい夜に。',
+    moods:['special','energetic','mature'], tags:['fruit','colorful','night','citrus','photo','modern'] },
+  { n:'Espresso Martini', jp:'エスプレッソマティーニ', w:'眠らない夜', base:'ウォッカ + コーヒーリキュール', sweet:3, abv:4, glass:'martini',
+    c1:'#3B2314', c2:'#7A4B28', garnish:'bean',
+    d:'コーヒーの香りと苦みを、きりっとしたウォッカで包んだ一杯。甘さは控えめ。',
+    moods:['mature','special','challenge'], tags:['coffee','bitter','strong','night','modern'] },
+  { n:'Gin & Tonic', jp:'ジントニック', w:'強い意志', base:'ジン', sweet:2, abv:3, glass:'highball',
+    c1:'#E9F5EE', c2:'#CFE6DC', garnish:'lime',
+    d:'バーの基準になる定番。ジンの香草感とトニックのほろ苦さが澄んでいる。',
+    moods:['refresh','relax','mature'], tags:['citrus','soda','easy','classic','bitter'] },
+  { n:'Moscow Mule', jp:'モスコミュール', w:'けんかをやめて', base:'ウォッカ', sweet:2, abv:3, glass:'mug',
+    c1:'#D9A85C', c2:'#B8823A', garnish:'lime',
+    d:'ジンジャーの辛みとライム。銅マグでキンと冷えた、迷ったときの一杯。',
+    moods:['refresh','energetic'], tags:['spicy','soda','citrus','easy','classic'] },
+  { n:'Campari Soda', jp:'カンパリソーダ', w:'はかない恋', base:'カンパリ', sweet:1, abv:2, glass:'highball',
+    c1:'#C62828', c2:'#8E1B1B', garnish:'orange',
+    d:'鮮やかな赤と、大人の苦み。食事の前の一杯としても軽やか。',
+    moods:['mature','refresh'], tags:['bitter','soda','light','aperitif','colorful'] },
+  { n:'Cassis Orange', jp:'カシスオレンジ', w:'思い出づくり', base:'カシスリキュール', sweet:4, abv:1, glass:'highball',
+    c1:'#E8703A', c2:'#B0335B', garnish:'orange',
+    d:'甘酸っぱくて飲みやすい。お酒に慣れていない夜の、最初の一杯に。',
+    moods:['sweet','relax'], tags:['fruit','sweet','easy','beginner','light'] },
+  { n:'Kahlúa Milk', jp:'カルーアミルク', w:'素敵な思い出', base:'コーヒーリキュール', sweet:5, abv:1, glass:'rocks',
+    c1:'#C8A27A', c2:'#9C7550', garnish:'',
+    d:'コーヒーの甘さをミルクでまろやかに。デザートのような締めの一杯。',
+    moods:['sweet','relax'], tags:['sweet','creamy','coffee','easy','beginner','dessert'] },
+  { n:'Daiquiri', jp:'ダイキリ', w:'希望', base:'ラム', sweet:2, abv:4, glass:'coupe',
+    c1:'#F2EBD5', c2:'#DCD2B4', garnish:'lime',
+    d:'ラム・ライム・砂糖だけ。素材が透けて見える、静かで強い定番。',
+    moods:['refresh','mature','challenge'], tags:['citrus','strong','classic','dry'] },
+  { n:'Mojito', jp:'モヒート', w:'心の渇きを癒して', base:'ラム', sweet:3, abv:2, glass:'highball',
+    c1:'#C7E8B5', c2:'#8FC97C', garnish:'mint',
+    d:'ミントとライムが弾ける。暑い夜、汗が引くまでの一杯に。',
+    moods:['refresh','energetic'], tags:['mint','citrus','soda','herb','summer','easy'] },
+  { n:'Martini', jp:'マティーニ', w:'知的', base:'ジン + ドライベルモット', sweet:1, abv:5, glass:'martini',
+    c1:'#EDF2E8', c2:'#D6DFCE', garnish:'olive',
+    d:'カクテルの王様。強く、乾いていて、余計なものがない。',
+    moods:['mature','challenge','special'], tags:['strong','dry','classic','bitter','night'] },
+  { n:'Gimlet', jp:'ギムレット', w:'遠い人を想う', base:'ジン', sweet:2, abv:4, glass:'martini',
+    c1:'#E0EBD2', c2:'#C2D2B0', garnish:'lime',
+    d:'ジンとライムだけの潔さ。少し感傷的な夜によく似合う。',
+    moods:['mature','refresh','relax'], tags:['citrus','strong','classic','dry','sentimental'] },
+  { n:'Margarita', jp:'マルガリータ', w:'無言の愛', base:'テキーラ', sweet:2, abv:4, glass:'coupe',
+    c1:'#E9F2DC', c2:'#CDDCB8', garnish:'salt',
+    d:'塩・ライム・テキーラ。きりりと引き締まった、記念日向きの一杯。',
+    moods:['special','challenge','refresh'], tags:['citrus','salt','strong','classic'] },
+  { n:'Salty Dog', jp:'ソルティドッグ', w:'無口なあなた', base:'ウォッカ', sweet:2, abv:2, glass:'rocks',
+    c1:'#F6CBA6', c2:'#E29B6A', garnish:'salt',
+    d:'グレープフルーツの苦みと塩。甘くないのに飲みやすい。',
+    moods:['refresh','mature'], tags:['citrus','salt','light','easy','bitter'] },
+  { n:'Screwdriver', jp:'スクリュードライバー', w:'恋のチャンス', base:'ウォッカ', sweet:3, abv:2, glass:'highball',
+    c1:'#F5A63C', c2:'#E07B1E', garnish:'orange',
+    d:'オレンジジュースそのものの明るさ。気負わず頼める一杯。',
+    moods:['energetic','sweet'], tags:['fruit','citrus','easy','beginner','bright'] },
+  { n:'Blue Hawaii', jp:'ブルーハワイ', w:'一目惚れ', base:'ラム', sweet:4, abv:2, glass:'hurricane',
+    c1:'#54B8F0', c2:'#1E6FBF', garnish:'cherry',
+    d:'南国の青。写真に残したくなる、旅の気分の一杯。',
+    moods:['special','sweet','energetic'], tags:['fruit','sweet','colorful','summer','photo'] },
+  { n:'Piña Colada', jp:'ピニャコラーダ', w:'気楽にいこう', base:'ラム', sweet:5, abv:2, glass:'hurricane',
+    c1:'#F7EEDC', c2:'#E2D2B4', garnish:'pineapple',
+    d:'パイナップルとココナッツ。甘くて濃い、南の島のデザート。',
+    moods:['sweet','relax'], tags:['sweet','creamy','fruit','easy','beginner','dessert'] },
+  { n:'Singapore Sling', jp:'シンガポールスリング', w:'旅の途中で', base:'ジン', sweet:4, abv:3, glass:'hurricane',
+    c1:'#EE6A5C', c2:'#C0392B', garnish:'cherry',
+    d:'甘酸っぱく華やかな夕焼け色。少し長い夜のはじまりに。',
+    moods:['special','sweet'], tags:['fruit','sweet','colorful','photo','classic'] },
+  { n:'Kir', jp:'キール', w:'最高の出会い', base:'白ワイン + カシス', sweet:3, abv:2, glass:'wine',
+    c1:'#A8365C', c2:'#7A1F42', garnish:'',
+    d:'白ワインにカシスをひとさじ。会話をはじめるための一杯。',
+    moods:['mature','relax','sweet'], tags:['wine','fruit','light','aperitif','easy'] },
+  { n:'Kir Royal', jp:'キールロワイヤル', w:'祝福', base:'シャンパン + カシス', sweet:3, abv:2, glass:'flute',
+    c1:'#8E2A50', c2:'#5E1533', garnish:'',
+    d:'泡とカシスの深い赤。乾杯にふさわしい、少しだけ贅沢な一杯。',
+    moods:['special','mature'], tags:['sparkling','fruit','celebration','light','elegant'] },
+  { n:'Mimosa', jp:'ミモザ', w:'真心', base:'シャンパン + オレンジ', sweet:3, abv:1, glass:'flute',
+    c1:'#F5C24E', c2:'#E39A22', garnish:'',
+    d:'オレンジと泡。軽やかで、誰と飲んでも角が立たない。',
+    moods:['special','refresh','sweet'], tags:['sparkling','citrus','light','easy','beginner'] },
+  { n:'Bellini', jp:'ベリーニ', w:'愛らしい', base:'スパークリング + 白桃', sweet:4, abv:1, glass:'flute',
+    c1:'#F8B49A', c2:'#E88A6C', garnish:'',
+    d:'白桃のやわらかい甘さに泡。淡い色が写真によく映える。',
+    moods:['sweet','special'], tags:['sparkling','fruit','sweet','easy','photo','beginner'] },
+  { n:'Manhattan', jp:'マンハッタン', w:'大人の余裕', base:'ライウイスキー + ベルモット', sweet:2, abv:5, glass:'martini',
+    c1:'#8C3320', c2:'#5A1D12', garnish:'cherry',
+    d:'カクテルの女王。甘さの奥に苦みが立つ、腰を据えて飲む一杯。',
+    moods:['mature','challenge'], tags:['strong','whisky','classic','bitter','night'] },
+  { n:'Old Fashioned', jp:'オールドファッションド', w:'古き良き時代', base:'バーボン', sweet:2, abv:5, glass:'rocks',
+    c1:'#B25E23', c2:'#7C3C12', garnish:'orange',
+    d:'砂糖とビターズとウイスキー。氷が溶けるほど表情が変わる。',
+    moods:['mature','challenge','relax'], tags:['strong','whisky','classic','bitter','slow'] },
+  { n:'Negroni', jp:'ネグローニ', w:'はじまりの一杯', base:'ジン + カンパリ + ベルモット', sweet:2, abv:4, glass:'rocks',
+    c1:'#C0392B', c2:'#8B2415', garnish:'orange',
+    d:'苦い・甘い・強いが同量で並ぶ。苦みが好きな人はここから。',
+    moods:['mature','challenge'], tags:['bitter','strong','classic','aperitif'] },
+  { n:'Sidecar', jp:'サイドカー', w:'いつも二人で', base:'ブランデー', sweet:3, abv:4, glass:'martini',
+    c1:'#DFA155', c2:'#B87833', garnish:'lemon',
+    d:'ブランデーの香りとレモンの酸。品のいい甘さでまとまる。',
+    moods:['mature','special'], tags:['citrus','strong','classic','elegant'] },
+  { n:'White Lady', jp:'ホワイトレディ', w:'密かな思い', base:'ジン', sweet:3, abv:4, glass:'martini',
+    c1:'#F4F1E6', c2:'#DBD6C4', garnish:'lemon',
+    d:'白く霞んだ姿。甘さと酸のバランスがよく、静かに強い。',
+    moods:['mature','sweet','special'], tags:['citrus','strong','classic','elegant'] },
+  { n:'X.Y.Z.', jp:'エックスワイジー', w:'もう後がない', base:'ラム', sweet:3, abv:4, glass:'martini',
+    c1:'#E8D6B0', c2:'#C9B187', garnish:'lemon',
+    d:'アルファベットの最後の三文字。これ以上はない、という締めの一杯。',
+    moods:['challenge','mature'], tags:['citrus','strong','classic','last'] },
+  { n:'Godfather', jp:'ゴッドファーザー', w:'絆', base:'ウイスキー + アマレット', sweet:3, abv:5, glass:'rocks',
+    c1:'#9C5324', c2:'#6B3413', garnish:'',
+    d:'杏仁のような甘い香りとウイスキーの厚み。ゆっくり傾ける夜に。',
+    moods:['relax','mature','challenge'], tags:['strong','whisky','sweet','slow','night'] },
+  { n:'Rusty Nail', jp:'ラスティネイル', w:'渋い魅力', base:'スコッチ + ドランブイ', sweet:3, abv:5, glass:'rocks',
+    c1:'#A5661F', c2:'#6E3F0E', garnish:'',
+    d:'蜂蜜とハーブを含んだスコッチ。錆びた釘という名の、深い一杯。',
+    moods:['relax','mature','challenge'], tags:['strong','whisky','herb','slow','night'] },
+  { n:'Fuzzy Navel', jp:'ファジーネーブル', w:'無邪気', base:'ピーチリキュール', sweet:5, abv:1, glass:'highball',
+    c1:'#F7AE5E', c2:'#E8843A', garnish:'orange',
+    d:'桃とオレンジ。お酒の感じがほとんどしない、やさしい甘さ。',
+    moods:['sweet','relax'], tags:['fruit','sweet','easy','beginner','light'] },
+  { n:'Shandy Gaff', jp:'シャンディガフ', w:'気取らない乾杯', base:'ビール + ジンジャーエール', sweet:2, abv:1, glass:'highball',
+    c1:'#D6A03A', c2:'#A8731C', garnish:'',
+    d:'ビールが少し苦手でも飲みやすい。肩の力を抜きたい夜に。',
+    moods:['refresh','energetic','relax'], tags:['beer','spicy','light','easy','beginner'] },
+  { n:'Aperol Spritz', jp:'アペロールスプリッツ', w:'陽気な午後', base:'アペロール + スパークリング', sweet:3, abv:1, glass:'wine',
+    c1:'#F2762A', c2:'#D9531A', garnish:'orange',
+    d:'オレンジ色の泡。軽い苦みで、食事の前後どちらでも。',
+    moods:['refresh','special','energetic'], tags:['bitter','sparkling','citrus','light','aperitif','photo'] },
+  { n:'Shirley Temple', jp:'シャーリーテンプル', w:'あどけない', base:'ノンアルコール', sweet:4, abv:0, glass:'highball',
+    c1:'#F2607A', c2:'#C6304D', garnish:'cherry',
+    d:'ジンジャーエールとグレナデン。飲めない日でも、同じ景色を。',
+    moods:['sweet','relax','refresh'], tags:['nonalcohol','sweet','fruit','easy','beginner'] },
+  { n:'Cinderella', jp:'シンデレラ', w:'魔法のとける前に', base:'ノンアルコール', sweet:3, abv:0, glass:'coupe',
+    c1:'#F6C77B', c2:'#E09A4E', garnish:'orange',
+    d:'オレンジ・レモン・パイナップルだけ。ノンアルでも、ちゃんとカクテル。',
+    moods:['sweet','refresh','special'], tags:['nonalcohol','fruit','citrus','easy','beginner','photo'] },
+  { n:'Saratoga Cooler', jp:'サラトガクーラー', w:'素面の粋', base:'ノンアルコール', sweet:2, abv:0, glass:'highball',
+    c1:'#E3C98F', c2:'#C0A263', garnish:'lime',
+    d:'ライムとジンジャーだけ。すっきりしていて、大人のノンアル。',
+    moods:['refresh','relax','mature'], tags:['nonalcohol','citrus','spicy','light','easy'] }
+];
+
+/* ============================================================
+   2. STORAGE
+   ============================================================ */
+const K_REC = 'nightsip.records.v1', K_THEME = 'nightsip.theme.v1';
+/* 過去に使っていたキー名。改名しても記録が消えないよう、現行キーが空なら引き継ぐ */
+const LEGACY = { [K_REC]: ['nightnotes.records.v1'], [K_THEME]: ['nightnotes.theme.v1'] };
+const mem = {};
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return mem[k] ?? null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { mem[k] = v; return false; } return true; }
+function migrate() {
+  try {
+    Object.entries(LEGACY).forEach(([now, olds]) => olds.forEach(was => {
+      const old = localStorage.getItem(was);
+      if (old === null) return;
+      if (localStorage.getItem(now) === null) localStorage.setItem(now, old);
+      localStorage.removeItem(was);
+    }));
+  } catch (e) { /* localStorage が使えない環境では何もしない */ }
+}
+migrate();
+function loadRecords() { try { return JSON.parse(lsGet(K_REC) || '[]'); } catch (e) { return []; } }
+function saveRecords(l) { if (!lsSet(K_REC, JSON.stringify(l))) toast('保存容量がいっぱいです'); }
+let RECORDS = loadRecords();
+
+/* ============================================================
+   3. SUGGESTION ENGINE
+   自由入力はローカル解析。本番では analyzeText() を
+   サーバー経由の LLM 呼び出しに差し替えれば UI はそのまま。
+   ============================================================ */
+const KEYWORDS = [
+  { re:/疲れ|つかれ|しんど|くたくた|残業|眠い|ねむ/,      moods:['relax'],              tags:['slow','sweet','easy'],         say:'お疲れさまでした。まずは肩の力を抜けるものを。' },
+  { re:/落ち込|凹|へこ|悲し|つら|失恋|泣/,                moods:['relax','mature'],     tags:['slow','strong','sentimental'], say:'そういう夜は、急がずに飲めるものがいいと思います。' },
+  { re:/嬉し|うれし|楽し|最高|祝|記念|誕生日|昇進|合格/,   moods:['special'],            tags:['celebration','sparkling'],     say:'それはおめでとうございます。今日は華やかにいきましょう。' },
+  { re:/元気|テンション|盛り上|上げ|やる気/,               moods:['energetic'],          tags:['bright','soda','citrus'],      say:'では、明るく背中を押してくれるものを。' },
+  { re:/甘い|甘め|あまい|デザート|チョコ|スイーツ|桃|苺/,  moods:['sweet'],              tags:['sweet','fruit','dessert'],     say:'甘い夜ですね。デザートみたいな一杯はいかがでしょう。' },
+  { re:/甘くない|甘すぎ|辛口|ドライ|きりっ|キリッ/,        moods:['mature'],             tags:['dry','bitter'],                say:'甘さは控えめに。すっきり乾いたものをお出しします。' },
+  { re:/苦|ビター|大人/,                                   moods:['mature'],             tags:['bitter'],                      say:'苦みのあるものを。大人の顔をした一杯です。' },
+  { re:/さっぱり|すっきり|爽やか|さわやか|暑|汗|喉|のど/,  moods:['refresh'],            tags:['citrus','soda','mint'],        say:'喉を通る軽いものにしましょう。' },
+  { re:/強い|酔い|効く|濃い/,                              moods:['challenge','mature'], tags:['strong'],                      say:'強めですね。ゆっくり、水と一緒にどうぞ。' },
+  { re:/初め|はじめ|初心者|わからな|分からな|弱い|苦手/,   moods:['sweet','relax'],      tags:['beginner','easy','light'],     say:'はじめてでも大丈夫です。飲みやすいものから並べますね。' },
+  { re:/静か|落ち着|ゆっくり|一人|ひとり|独り/,            moods:['relax','mature'],     tags:['slow','classic'],              say:'静かな夜に。時間をかけて飲めるものを選びました。' },
+  { re:/挑戦|冒険|新し|変わっ|珍し|チャレンジ/,            moods:['challenge'],          tags:['strong','modern','bitter'],    say:'それでは、少し攻めた一杯を。' },
+  { re:/デート|好きな人|二人|ふたり|恋/,                   moods:['special','sweet'],    tags:['elegant','photo','sparkling'], say:'いい夜になりますように。見た目の綺麗なものを。' },
+  { re:/コーヒー|カフェイン|眠くな/,                       moods:['mature'],             tags:['coffee'],                      say:'コーヒーの香りがするものを。目が冴えますよ。' },
+  { re:/フルーツ|果物|ジュース|オレンジ|レモン|柑橘/,      moods:['sweet','refresh'],    tags:['fruit','citrus'],              say:'果実の味を前に出したものを選びました。' },
+  { re:/炭酸|しゅわ|泡|スパークリング|シャンパン/,         moods:['refresh','special'],  tags:['soda','sparkling'],            say:'泡のあるものにしましょう。' },
+  { re:/写真|映え|きれい|綺麗|かわい|可愛/,                moods:['special','sweet'],    tags:['photo','colorful'],            say:'写真に残したくなる色のものを。' },
+  { re:/ノンアル|飲めな|運転|休肝|やめ/,                   moods:['refresh','relax'],    tags:['nonalcohol'],                  say:'アルコールなしでも、夜は楽しめます。' },
+  { re:/ウイスキー|スコッチ|バーボン/,                     moods:['mature'],             tags:['whisky','strong'],             say:'ウイスキーをお好みでしたら、こちらを。' },
+  { re:/ジン/,                                             moods:['mature','refresh'],   tags:['classic','dry'],               say:'ジンでお作りしますね。' },
+  { re:/ラム/,                                             moods:['refresh','sweet'],    tags:['classic','summer'],            say:'ラムをベースに。' },
+  { re:/ワイン/,                                           moods:['mature','relax'],     tags:['wine','light'],                say:'ワインを使ったものを。' },
+  { re:/締め|最後|ラスト|終わ/,                            moods:['mature'],             tags:['last','sweet','dessert'],      say:'締めの一杯ですね。' },
+  { re:/雨|寒|冬/,                                         moods:['relax'],              tags:['whisky','slow','creamy'],      say:'冷える夜は、体があたたまるものを。' },
+  { re:/夏|海|旅|南国|リゾート/,                           moods:['special','refresh'],  tags:['summer','fruit','colorful'],   say:'旅先の気分で選びました。' }
+];
+
+const MOOD_SAY = {
+  relax:     '今夜はゆっくりいきましょう。角の立たないものを三つ。',
+  energetic: '景気よくいきましょうか。明るい一杯を三つ。',
+  sweet:     '甘いものがお好きでしたら、この辺りを。',
+  mature:    'それでは、少し落ち着いたものを。',
+  refresh:   'すっきりした喉ごしのものを三つ選びました。',
+  special:   '特別な夜に。少し華やかなものを並べます。',
+  challenge: 'まだ出会っていない味を。少し攻めた三杯です。',
+  custom:    'なるほど。それでしたら——'
+};
+
+function analyzeText(t) {
+  const moods = [], tags = [], says = [];
+  KEYWORDS.forEach(k => { if (k.re.test(t)) { moods.push(...k.moods); tags.push(...k.tags); says.push(k.say); } });
+  return { moods:[...new Set(moods)], tags:[...new Set(tags)], says };
+}
+function score(c, moodIds, tags) {
+  let s = 0;
+  moodIds.forEach(m => { if (c.moods.includes(m)) s += 3; });
+  tags.forEach(t => { if (c.tags.includes(t)) s += 2; });
+  return s;
+}
+function suggest(moodId, freeText) {
+  let moodIds = [], tags = [], line = '';
+  if (freeText && freeText.trim()) {
+    const a = analyzeText(freeText);
+    moodIds = a.moods; tags = a.tags;
+    line = a.says.length ? a.says.slice(0, 2).join(' ')
+         : '言葉にならない夜もありますね。今日の定番から、三つ並べておきます。';
+    if (!moodIds.length) moodIds = ['relax', 'mature'];
+  } else {
+    moodIds = [moodId];
+    line = MOOD_SAY[moodId] || MOOD_SAY.custom;
+  }
+  let pool = COCKTAILS;
+  if (tags.includes('nonalcohol')) {                 /* 運転・ノンアル希望ならお酒は出さない */
+    pool = COCKTAILS.filter(c => c.abv === 0);
+    tags = tags.filter(t => t !== 'strong');
+  }
+  const picked = pool
+    .map(c => ({ c, s: score(c, moodIds, tags) + Math.random() * 0.9 }))
+    .filter(x => x.s > 0.9).sort((a, b) => b.s - a.s).slice(0, 3).map(x => x.c);
+  return { line, list: picked.length ? picked : pool.slice(0, 3), moodIds };
+}
+
+/* ============================================================
+   4. GLASS ILLUSTRATION
+   ============================================================ */
+const SHAPES = {
+  martini:  { body:'M16 20 L84 20 L50 64 Z', liq:'M22 26 L78 26 L50 60 Z', stem:'M50 64 L50 96 M32 100 L68 100' },
+  coupe:    { body:'M17 22 A33 27 0 0 0 83 22 Z', liq:'M23 30 A27 20 0 0 0 77 30 Z', stem:'M50 62 L50 96 M32 100 L68 100' },
+  rocks:    { body:'M23 44 L27 103 L73 103 L77 44 Z', liq:'M27 63 L29.5 99 L70.5 99 L73 63 Z', stem:'' },
+  highball: { body:'M31 16 L33 105 L67 105 L69 16 Z', liq:'M34 40 L35 101 L65 101 L66 40 Z', stem:'' },
+  flute:    { body:'M39 12 L41 58 Q50 70 59 58 L61 12 Z', liq:'M40.5 26 L41.5 57 Q50 68 58.5 57 L59.5 26 Z', stem:'M50 68 L50 96 M34 100 L66 100' },
+  hurricane:{ body:'M30 14 C22 42 33 62 41 72 L41 92 L59 92 L59 72 C67 62 78 42 70 14 Z', liq:'M33 36 C29 52 36 64 42 71 L58 71 C64 64 71 52 67 36 Z', stem:'M36 100 L64 100 M41 92 L59 92' },
+  mug:      { body:'M30 30 L30 100 Q30 106 36 106 L64 106 Q70 106 70 100 L70 30 Z M70 44 Q84 44 84 58 Q84 72 70 72', liq:'M34 44 L34 100 Q34 102 37 102 L63 102 Q66 102 66 100 L66 44 Z', stem:'' },
+  wine:     { body:'M28 20 L30 46 Q30 66 50 68 Q70 66 70 46 L72 20 Z', liq:'M31 34 Q31 63 50 65 Q69 63 69 34 Z', stem:'M50 68 L50 96 M32 100 L68 100' }
+};
+const GARNISH = {
+  lime:{c:'#8FC97C',x:74,y:22}, lemon:{c:'#EBD25B',x:74,y:22}, orange:{c:'#F0913A',x:74,y:22},
+  cherry:{c:'#D6455C',x:74,y:22}, olive:{c:'#96A559',x:50,y:44}, mint:{c:'#7FCB6F',x:60,y:20},
+  bean:{c:'#3A2412',x:50,y:32}, pineapple:{c:'#F2C744',x:72,y:20}, salt:{c:'#E9E4D8',x:0,y:0}
+};
+let uid = 0;
+function glassSVG(c, size) {
+  const g = SHAPES[c.glass] || SHAPES.rocks, id = 'g' + (++uid), gar = GARNISH[c.garnish];
+  let extra = '';
+  if (gar && c.garnish !== 'salt') extra = `<circle cx="${gar.x}" cy="${gar.y}" r="5" fill="${gar.c}" opacity=".95"/>`;
+  if (c.garnish === 'salt')       extra = `<path d="M17 22 L83 22" stroke="#E9E4D8" stroke-width="3" stroke-linecap="round" opacity=".75"/>`;
+  return `<svg class="glass" viewBox="0 0 100 118" width="${size}" height="${Math.round(size*1.18)}" aria-hidden="true">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${c.c1}"/><stop offset="100%" stop-color="${c.c2}"/></linearGradient></defs>
+    <path d="${g.liq}" fill="url(#${id})" opacity=".94"/>
+    <path d="${g.body}" fill="none" stroke="var(--glass-line)" stroke-width="1.5" stroke-linejoin="round"/>
+    ${g.stem ? `<path d="${g.stem}" fill="none" stroke="var(--glass-line)" stroke-width="1.5" stroke-linecap="round"/>` : ''}
+    ${extra}</svg>`;
+}
+function frameHTML(c, size) {
+  const bokeh = [[14,72,26],[80,26,18],[88,64,12],[26,20,14]]
+    .map(([x,y,r]) => `<i class="bokeh" style="left:${x}%;top:${y}%;width:${r}px;height:${r}px;background:var(--bokeh-a)"></i>`).join('');
+  return `<div class="frame"><div class="halo"></div>${bokeh}${glassSVG(c, size)}</div>`;
+}
+
+/* ============================================================
+   4.5 MOON PHASE — その日の月の満ち欠け
+   朔望月 29.530588853 日 / 基準は 2000-01-06 18:14 UTC の新月
+   ============================================================ */
+const SYNODIC = 29.530588853;
+function moonPhase(d) {                       /* 0 = 新月, 0.5 = 満月 */
+  const jd = d.getTime() / 86400000 + 2440587.5;
+  let p = ((jd - 2451550.1) / SYNODIC) % 1;
+  return p < 0 ? p + 1 : p;
+}
+const moonIllum = p => (1 - Math.cos(2 * Math.PI * p)) / 2;   /* 輝面比 0-1 */
+const moonAge   = p => p * SYNODIC;                            /* 月齢 */
+function moonName(p) {
+  if (p < .022 || p >= .978)      return '新月';
+  if (Math.abs(p - .25) < .022)   return '上弦の月';
+  if (Math.abs(p - .5)  < .022)   return '満月';
+  if (Math.abs(p - .75) < .022)   return '下弦の月';
+  if (p < .25) return '三日月';
+  if (p < .5)  return '十三夜月';
+  if (p < .75) return '十六夜月';
+  return '有明月';
+}
+/* 満ち欠けの形： 外側の半円 ＋ 明暗境界線（半楕円）。
+   三日月は境界が明るい側へ、十三夜は暗い側へ膨らむ。 */
+function moonPath(p, cx, cy, r) {
+  const cos = Math.cos(2 * Math.PI * p), rx = Math.abs(cos) * r;
+  const cres = cos > 0, wax = p < .5;
+  const s1 = wax ? 1 : 0;
+  const s2 = wax ? (cres ? 0 : 1) : (cres ? 1 : 0);
+  return `M${cx},${cy-r} A${r},${r} 0 0 ${s1} ${cx},${cy+r} A${rx.toFixed(2)},${r} 0 0 ${s2} ${cx},${cy-r} Z`;
+}
+function moonSVG(date, size) {
+  const p = moonPhase(date), id = 'mn' + (++uid);
+  return `<svg viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true" style="flex:none">
+    <defs><radialGradient id="${id}"><stop offset="40%" stop-color="rgba(226,235,255,.30)"/>
+      <stop offset="100%" stop-color="rgba(226,235,255,0)"/></radialGradient></defs>
+    <circle cx="60" cy="60" r="58" fill="url(#${id})"/>
+    <circle cx="60" cy="60" r="50" fill="rgba(210,220,250,.13)"/>
+    <path d="${moonPath(p, 60, 60, 50)}" fill="#eef2ff" opacity=".95"/>
+  </svg>`;
+}
+function drawMoonCanvas(x, cx, cy, r, p) {
+  const cos = Math.cos(2 * Math.PI * p), rx = Math.abs(cos) * r, cres = cos > 0, wax = p < .5;
+  const g = x.createRadialGradient(cx, cy, r * .5, cx, cy, r * 2.6);
+  g.addColorStop(0, 'rgba(226,235,255,.26)'); g.addColorStop(1, 'rgba(226,235,255,0)');
+  x.globalAlpha = 1; x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r * 2.6, 0, 7); x.fill();
+  x.globalAlpha = .12; x.fillStyle = '#cfd8f2';                  /* 地球照 */
+  x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill();
+  x.globalAlpha = .95; x.fillStyle = '#eef2ff';
+  x.beginPath();
+  if (wax) x.arc(cx, cy, r, -Math.PI/2, Math.PI/2, false);
+  else     x.arc(cx, cy, r,  Math.PI/2, -Math.PI/2, false);
+  x.ellipse(cx, cy, rx, r, 0, wax ? Math.PI/2 : -Math.PI/2, wax ? -Math.PI/2 : Math.PI/2, cres);
+  x.closePath(); x.fill();
+  x.globalAlpha = 1;
+}
+
+/* ============================================================
+   5. HELPERS
+   ============================================================ */
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2300); }
+function iso(d) { const t = d || new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; }
+function show(id) {
+  $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+  $$('.nav button').forEach(b => b.classList.toggle('active', b.dataset.go === id));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (id === 's-cal') renderCal();
+  if (id === 's-my') renderCollection();
+}
+
+/* ============================================================
+   6. SCREEN 01
+   ============================================================ */
+function renderMoods() {
+  $('#moodGrid').innerHTML = MOODS.map((m, i) => `
+    <button class="mood ${i === MOODS.length - 1 ? 'last' : ''}" data-m="${m.id}">
+      ${ICON[m.icon]}<b>${m.jp}</b>
+    </button>`).join('');
+  $$('.mood').forEach(b => b.addEventListener('click', () => renderSuggest(b.dataset.m, '')));
+}
+
+/* ============================================================
+   7. SCREEN 02
+   ============================================================ */
+let curMood = 'relax';
+function renderSuggest(moodId, text) {
+  const r = suggest(moodId, text);
+  curMood = text ? (r.moodIds.find(m => MOOD_BY_ID[m]) || 'relax') : moodId;
+  $('#master .line').textContent = r.line;
+  $('#cards').innerHTML = r.list.map(c => `
+    <article class="cocktail">
+      ${frameHTML(c, 132)}
+      <div class="c-body">
+        <div class="c-name">${esc(c.n)}</div>
+        <div class="c-kana">${esc(c.jp)}</div>
+        <div class="c-word">〜 ${esc(c.w)} 〜</div>
+        <p class="c-desc">${esc(c.d)}</p>
+        <div class="chips">${c.tags.slice(0,3).map(t => `<span class="chip">#${TAG_JP[t] || t}</span>`).join('')}
+          <span class="chip">${esc(c.base)}</span></div>
+        <div class="meters">
+          <div class="meter"><span class="t">甘さ</span><span class="bar"><i style="width:${c.sweet*20}%"></i></span></div>
+          <div class="meter"><span class="t">強さ</span><span class="bar"><i style="width:${c.abv*20}%"></i></span></div>
+        </div>
+        <button class="btn sm pick" data-n="${esc(c.jp)}" style="margin-top:14px">この一杯を記録する</button>
+      </div>
+    </article>`).join('');
+  $$('.pick').forEach(b => b.addEventListener('click', () => {
+    $('#fName').value = b.dataset.n;
+    $('#fMood').value = curMood;
+    $('#fName').scrollIntoView({ behavior:'smooth', block:'center' });
+    toast(`「${b.dataset.n}」を記録欄に入れました`);
+  }));
+  $('#fMood').value = curMood;
+  show('s-suggest');
+}
+
+let rating = 0, photo = null;
+function renderStars() {
+  $('#fStars').innerHTML = [1,2,3,4,5].map(i =>
+    `<button class="star ${i <= rating ? 'on' : ''}" data-v="${i}" aria-label="${i}点">${ICON.starO}</button>`).join('');
+  $$('.star').forEach(s => s.addEventListener('click', () => { rating = rating === +s.dataset.v ? 0 : +s.dataset.v; renderStars(); }));
+}
+function shrink(file, cb) {
+  const fr = new FileReader();
+  fr.onload = e => { const im = new Image(); im.onload = () => {
+    const k = Math.min(1, 900 / Math.max(im.width, im.height));
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+    cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+    cb(cv.toDataURL('image/jpeg', .72));
+  }; im.src = e.target.result; };
+  fr.readAsDataURL(file);
+}
+function resetForm() {
+  $('#fName').value = ''; $('#fBar').value = ''; $('#fMemo').value = '';
+  $('#fDate').value = iso(); rating = 0; renderStars();
+  photo = null; $('#photoThumb').hidden = true;
+}
+function saveNow() {
+  const name = $('#fName').value.trim();
+  if (!name) { toast('カクテル名を入れてください'); $('#fName').focus(); return; }
+  RECORDS.push({ id:Date.now(), date:$('#fDate').value || iso(), mood:$('#fMood').value,
+    cocktail:name, bar:$('#fBar').value.trim(), memo:$('#fMemo').value.trim(),
+    rating, photo, createdAt:new Date().toISOString() });
+  saveRecords(RECORDS);
+  const d = $('#fDate').value || iso();
+  resetForm(); toast('記録しました');
+  const [y, m] = d.split('-').map(Number);
+  calY = y; calM = m - 1; sel = d;
+  setTimeout(() => show('s-cal'), 520);
+}
+
+/* ============================================================
+   8. SCREEN 03 — calendar
+   ============================================================ */
+let calY = new Date().getFullYear(), calM = new Date().getMonth(), sel = null;
+const DOW = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const MON = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const WD_JP = ['日','月','火','水','木','金','土'];
+
+function renderCal() {
+  $('#dow').innerHTML = DOW.map(d => `<div class="dow">${d}</div>`).join('');
+  $('#calTitle').innerHTML = `${MON[calM]} ${calY} ${ICON.moon}`;
+
+  const first = new Date(calY, calM, 1).getDay();
+  const len = new Date(calY, calM + 1, 0).getDate();
+  const prevLen = new Date(calY, calM, 0).getDate();
+  const by = {}; RECORDS.forEach(r => (by[r.date] = by[r.date] || []).push(r));
+
+  let h = '';
+  for (let i = first - 1; i >= 0; i--) h += `<button class="day out" disabled><span class="num">${prevLen - i}</span><span class="dots"></span></button>`;
+  for (let d = 1; d <= len; d++) {
+    const k = `${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rs = by[k] || [];
+    const dots = rs.slice(0,3).map(r => `<span class="dot" style="background:${(MOOD_BY_ID[r.mood]||{}).color||'var(--gold)'}"></span>`).join('');
+    h += `<button class="day ${rs.length?'has':''} ${k===sel?'sel':''}" data-d="${k}"><span class="num">${d}</span><span class="dots">${dots}</span></button>`;
+  }
+  const tail = (7 - ((first + len) % 7)) % 7;
+  for (let i = 1; i <= tail; i++) h += `<button class="day out" disabled><span class="num">${i}</span><span class="dots"></span></button>`;
+  $('#days').innerHTML = h;
+
+  $$('.day.has').forEach(c => c.addEventListener('click', () => { sel = c.dataset.d; renderCal(); }));
+
+  $('#stMonth').textContent = RECORDS.filter(r => { const [y,m] = r.date.split('-').map(Number); return y === calY && m === calM + 1; }).length;
+  $('#stTotal').textContent = RECORDS.length;
+  $('#stKinds').textContent = new Set(RECORDS.map(r => r.cocktail)).size;
+  renderRecords();
+}
+const starStr = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+
+function renderRecords() {
+  const list = sel ? RECORDS.filter(r => r.date === sel)
+                   : [...RECORDS].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 5);
+  if (sel) {
+    const d = new Date(sel + 'T21:00:00');          /* その夜の月を出したいので21時基準 */
+    const p = moonPhase(d);
+    $('#recDate').innerHTML = `<span>${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WD_JP[d.getDay()]}）</span>
+      <span class="moon-tag">${moonSVG(d, 20)}${moonName(p)}</span>`;
+  } else $('#recDate').innerHTML = '<span>最近の記録</span>';
+
+  if (!list.length) {
+    $('#recList').innerHTML = `<div class="empty">この日の記録はまだありません。<br>気分を選んで、最初の一杯を残しましょう。</div>
+      <button class="btn" onclick="show('s-mood')">気分を選ぶ</button>`;
+    return;
+  }
+  $('#recList').innerHTML = list.map(r => {
+    const m = MOOD_BY_ID[r.mood] || { plain:'—', color:'var(--gold)' };
+    const c = COCKTAILS.find(x => x.jp === r.cocktail || x.n === r.cocktail);
+    return `<div class="rec">
+      <div class="thumb">${r.photo ? `<img src="${r.photo}" alt="">` : (c ? glassSVG(c, 56) : '')}</div>
+      <div class="info">
+        <div class="rn">${esc(c ? c.n : r.cocktail)}</div>
+        ${c ? `<div class="c-kana">${esc(c.jp)}</div>` : ''}
+        ${r.bar ? `<div class="rb">${ICON.pin}${esc(r.bar)}</div>` : ''}
+        <span class="mood-chip" style="color:${m.color}">☆ ${m.plain}</span>
+        ${r.memo ? `<div class="rmemo">${esc(r.memo)}</div>` : ''}
+        <div class="rstars">${starStr(r.rating)}</div>
+        <button class="del" data-del="${r.id}">削除</button>
+      </div></div>`;
+  }).join('');
+  $$('[data-del]').forEach(b => b.addEventListener('click', () => {
+    RECORDS = RECORDS.filter(r => r.id !== +b.dataset.del); saveRecords(RECORDS); renderCal(); toast('削除しました');
+  }));
+}
+
+/* ============================================================
+   9. SCREEN 04 — my page
+   ============================================================ */
+function renderCollection() {
+  const counts = {};
+  RECORDS.forEach(r => counts[r.cocktail] = (counts[r.cocktail] || 0) + 1);
+  const keys = Object.keys(counts).sort((a,b) => counts[b] - counts[a]);
+  if (!keys.length) { $('#collection').innerHTML = `<div class="empty">まだ一杯も記録がありません。<br>最初の夜を残してみましょう。</div>`; return; }
+  $('#collection').innerHTML = `<div class="coll">` + keys.map(k => {
+    const c = COCKTAILS.find(x => x.jp === k || x.n === k);
+    return `<div class="coll-item">${c ? glassSVG(c, 42) : '<div style="height:50px"></div>'}
+      <div class="n">${esc(c ? c.jp : k)}</div><div class="c">×${counts[k]}</div></div>`;
+  }).join('') + `</div>`;
+}
+
+/* ============================================================
+   10. THEME + SKY
+   ============================================================ */
+function renderMoonToday() {
+  const now = new Date(), p = moonPhase(now);
+  $('#moonToday').innerHTML = `${moonSVG(now, 26)}
+    <span>今夜の月 — <b>${moonName(p)}</b>　月齢 ${moonAge(p).toFixed(1)}・輝面比 ${Math.round(moonIllum(p)*100)}%</span>`;
+}
+
+function setTheme(name) {
+  document.body.dataset.theme = name;
+  document.documentElement.dataset.theme = name;   /* html 側の背景色も合わせる */
+  $$('.mode-card').forEach(c => c.classList.toggle('on', c.dataset.mode === name));
+  lsSet(K_THEME, name);
+  drawSky();
+}
+function drawSky() {
+  const cv = $('#sky'), theme = document.body.dataset.theme;
+  const w = cv.width = window.innerWidth, h = cv.height = window.innerHeight;
+  const x = cv.getContext('2d'); x.clearRect(0, 0, w, h);
+  if (theme === 'moon') {
+    for (let i = 0; i < 150; i++) { x.globalAlpha = Math.random() * .8 + .1; x.fillStyle = '#fff';
+      x.beginPath(); x.arc(Math.random()*w, Math.random()*h*.75, Math.random()*1.3+.2, 0, 7); x.fill(); }
+    drawMoonCanvas(x, w * .80, h * .11, 34, moonPhase(new Date()));   /* 今夜の月 */
+  } else if (theme === 'city') {
+    let px = 0;
+    while (px < w) {
+      const bw = 24 + Math.random()*46, bh = 60 + Math.random()*Math.min(260, h*.4);
+      x.globalAlpha = .9; x.fillStyle = '#120a1c'; x.fillRect(px, h-bh, bw, bh);
+      for (let wy = h-bh+8; wy < h-10; wy += 13)
+        for (let wx = px+5; wx < px+bw-6; wx += 11)
+          if (Math.random() > .55) { x.globalAlpha = Math.random()*.6+.15;
+            x.fillStyle = Math.random() > .5 ? '#ffd98a' : '#7ef0ff'; x.fillRect(wx, wy, 3.5, 6); }
+      px += bw + 3;
+    }
+  } else {
+    for (let i = 0; i < 26; i++) {
+      const cx = Math.random()*w, cy = Math.random()*h*.6, r = Math.random()*46+14;
+      const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, 'rgba(255,190,110,.16)'); g.addColorStop(1, 'rgba(255,190,110,0)');
+      x.globalAlpha = 1; x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill();
+    }
+  }
+  x.globalAlpha = 1;
+  drawModeScenes();
+}
+function drawModeScenes() {
+  $$('.mode-scene canvas').forEach(cv => {
+    const kind = cv.parentElement.classList.contains('moon') ? 'moon'
+               : cv.parentElement.classList.contains('city') ? 'city' : 'bar';
+    const w = cv.width = cv.offsetWidth || 380, h = cv.height = cv.offsetHeight || 108;
+    const x = cv.getContext('2d'); x.clearRect(0, 0, w, h);
+    if (kind === 'moon') {
+      for (let i = 0; i < 60; i++) { x.globalAlpha = Math.random()*.8+.15; x.fillStyle = '#fff';
+        x.beginPath(); x.arc(Math.random()*w, Math.random()*h, Math.random()*1.1+.2, 0, 7); x.fill(); }
+      drawMoonCanvas(x, w * .74, h * .36, 17, moonPhase(new Date()));
+    } else if (kind === 'city') {
+      let px = 0;
+      while (px < w) { const bw = 12+Math.random()*22, bh = 26+Math.random()*(h*.72);
+        x.globalAlpha = .92; x.fillStyle = '#0d0616'; x.fillRect(px, h-bh, bw, bh);
+        for (let wy = h-bh+4; wy < h-4; wy += 7) for (let wx = px+3; wx < px+bw-3; wx += 6)
+          if (Math.random() > .5) { x.globalAlpha = Math.random()*.7+.2;
+            x.fillStyle = Math.random() > .5 ? '#ffd98a' : '#7ef0ff'; x.fillRect(wx, wy, 2, 3); }
+        px += bw + 2; }
+    } else {
+      for (let i = 0; i < 5; i++) { const cx = (i+.5)*w/5 + (Math.random()*14-7), cy = h*.28;
+        const g = x.createRadialGradient(cx, cy, 0, cx, cy, 26);
+        g.addColorStop(0, 'rgba(255,196,110,.55)'); g.addColorStop(1, 'rgba(255,196,110,0)');
+        x.fillStyle = g; x.beginPath(); x.arc(cx, cy, 26, 0, 7); x.fill();
+        x.fillStyle = 'rgba(255,220,160,.85)'; x.beginPath(); x.arc(cx, cy, 2.6, 0, 7); x.fill(); }
+    }
+  });
+}
+
+/* ============================================================
+   11. INIT
+   ============================================================ */
+function init() {
+  renderMoods(); renderStars();
+  $('#fMood').innerHTML = MOODS.map(m => `<option value="${m.id}">${m.plain}</option>`).join('');
+  $('#names').innerHTML = COCKTAILS.map(c => `<option value="${c.jp}">`).join('');
+  $('#fDate').value = iso();
+
+  $('#freeGo').addEventListener('click', () => {
+    const t = $('#freeMood').value.trim();
+    if (!t) { toast('今の気分を書いてみてください'); return; }
+    renderSuggest('custom', t);
+  });
+  $('#backMood').addEventListener('click', () => show('s-mood'));
+  $('#save').addEventListener('click', saveNow);
+  $('#photoAdd').addEventListener('click', () => $('#fPhoto').click());
+  $('#fPhoto').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    shrink(f, url => { photo = url; $('#photoThumb').src = url; $('#photoThumb').hidden = false; });
+  });
+  $('#prev').addEventListener('click', () => { if (--calM < 0) { calM = 11; calY--; } sel = null; renderCal(); });
+  $('#next').addEventListener('click', () => { if (++calM > 11) { calM = 0; calY++; } sel = null; renderCal(); });
+  $$('.nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
+  $$('.mode-card').forEach(c => c.addEventListener('click', () => { setTheme(c.dataset.mode); toast(c.querySelector('.mode-jp').textContent + ' に切り替えました'); }));
+
+  renderMoonToday();
+  setTheme(lsGet(K_THEME) || 'bar');
+  window.addEventListener('resize', drawSky);
+  renderCal();
+}
+init();
+</script>
+</body>
+</html>

@@ -382,6 +382,25 @@ select option { background: var(--bg-2); color: var(--text); }
 }
 .mode-card.on .mode-check { background: var(--gold); color: #150d05; border-color: var(--gold); }
 
+/* ---------- account ---------- */
+.auth-lead { font-size: 12px; color: var(--dim); line-height: 1.9; margin: 0 0 16px; }
+.age-check {
+  display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--dim);
+  margin: 4px 0 4px; cursor: pointer;
+}
+.age-check input { width: 16px; height: 16px; accent-color: var(--gold); }
+.auth-btns { display: flex; gap: 10px; margin-top: 14px; }
+.auth-btns .btn { flex: 1; width: auto; margin-top: 0; }
+.linklike {
+  background: none; border: none; color: var(--faint); font-family: inherit;
+  font-size: 11.5px; cursor: pointer; padding: 12px 0 0; text-decoration: underline;
+}
+.linklike:hover { color: var(--gold); }
+.auth-note { font-size: 11.5px; color: var(--gold); line-height: 1.8; margin-top: 12px; min-height: 1em; }
+.who-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.who-name { font-size: 15px; }
+.who-mail { font-size: 11.5px; color: var(--faint); margin-top: 2px; word-break: break-all; }
+
 /* ---------- collection ---------- */
 .coll { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .coll-item { text-align: center; border: 1px solid var(--line); border-radius: 14px; padding: 10px 4px 8px; background: rgba(0,0,0,.2); }
@@ -424,6 +443,7 @@ select option { background: var(--bg-2); color: var(--text); }
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body data-theme="bar">
 <canvas id="sky"></canvas>
@@ -537,6 +557,36 @@ select option { background: var(--bg-2); color: var(--text); }
     <div class="screen-head">
       <span class="screen-num">04</span><span class="screen-title">マイページ</span>
       <div class="screen-sub">これまでの一杯と、夜の見え方を選ぶ</div>
+    </div>
+
+    <div class="panel" id="accountPanel">
+      <div class="form-title">アカウント</div>
+
+      <!-- ログアウト中 -->
+      <div id="authOut">
+        <p class="auth-lead">ログインすると、記録がこの端末の外に保存されます。機種変更しても残り、あとからフォロー機能も使えます。</p>
+        <div class="frow"><label for="aEmail">メール</label><input type="text" id="aEmail" autocomplete="email" placeholder="you@example.com"></div>
+        <div class="frow"><label for="aPass">パスワード</label><input type="password" id="aPass" autocomplete="current-password" placeholder="6文字以上"></div>
+        <label class="age-check"><input type="checkbox" id="aAge"> 20歳以上です</label>
+        <div class="auth-btns">
+          <button class="btn sm" id="btnLogin">ログイン</button>
+          <button class="btn sm plain" id="btnSignup">新規登録</button>
+        </div>
+        <button class="linklike" id="btnReset">パスワードを忘れた</button>
+        <div class="auth-note" id="authNote"></div>
+      </div>
+
+      <!-- ログイン中 -->
+      <div id="authIn" hidden>
+        <div class="who-row">
+          <div>
+            <div class="who-name" id="whoName">—</div>
+            <div class="who-mail" id="whoMail"></div>
+          </div>
+          <button class="btn sm plain" id="btnLogout">ログアウト</button>
+        </div>
+        <div class="auth-note" id="syncNote"></div>
+      </div>
     </div>
 
     <div class="panel">
@@ -804,6 +854,131 @@ function saveRecords(l) { if (!lsSet(K_REC, JSON.stringify(l))) toast('保存容
 let RECORDS = loadRecords();
 
 /* ============================================================
+   2.5 ACCOUNT — Supabase 接続
+   anon key は HTML に書かれ誰でも読める。これは仕様どおりで、
+   安全性はデータベース側の行レベルセキュリティが支えている。
+   service_role キーはここに絶対に書かないこと。
+   ============================================================ */
+const SUPABASE_URL = 'https://xmvzirvpnwihmylyuixb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhtdnppcnZwbndpaG15bHl1aXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NzQzNjYsImV4cCI6MjEwNjE1MDM2Nn0.sEfBGsAYbqUbWQSbGX0RPDSGQhk5MYWOtGm6bsWj3iM';
+const BUCKET = 'record-photos';
+
+let sb = null, session = null, profile = null;
+
+function cloudReady() { return !!(sb && session); }
+
+function initSupabase() {
+  if (SUPABASE_ANON_KEY.startsWith('PASTE_')) return false;      /* 未設定なら端末保存のまま動く */
+  if (!window.supabase) return false;                            /* CDN が読めない環境 */
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return true;
+}
+
+/* --- 画面が使う形と、データベースの列の対応 --- */
+const toRow = r => ({
+  id: r.id, user_id: session.user.id, drank_on: r.date, cocktail_name: r.cocktail,
+  bar_name: r.bar || null, mood: r.mood, memo: r.memo || null,
+  rating: r.rating, photo_path: r.photo_path || null, visibility: 'private'
+});
+const fromRow = x => ({
+  id: x.id, date: x.drank_on, cocktail: x.cocktail_name, bar: x.bar_name || '',
+  mood: x.mood, memo: x.memo || '', rating: x.rating,
+  photo: null, photo_path: x.photo_path, createdAt: x.created_at
+});
+
+async function cloudList() {
+  const { data, error } = await sb.from('records').select('*')
+    .eq('user_id', session.user.id).order('drank_on', { ascending: false });
+  if (error) { toast('記録を読み込めませんでした'); console.error(error); return []; }
+  return data.map(fromRow);
+}
+
+/* 写真は署名付きURLで表示する。期限は1時間 */
+const urlCache = new Map();
+async function photoURL(path) {
+  if (!path) return null;
+  if (path.startsWith('data:')) return path;                     /* 端末保存の写真 */
+  if (urlCache.has(path)) return urlCache.get(path);
+  const { data } = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
+  if (data?.signedUrl) urlCache.set(path, data.signedUrl);
+  return data?.signedUrl || null;
+}
+/* 描画後に data-photo を持つ img へ URL を流し込む */
+async function fillPhotos(root) {
+  for (const img of (root || document).querySelectorAll('img[data-photo]')) {
+    const u = await photoURL(img.dataset.photo);
+    if (u) img.src = u; else img.remove();
+  }
+}
+
+function dataURLtoBlob(u) {
+  const [head, b64] = u.split(',');
+  const mime = head.match(/:(.*?);/)[1], bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+async function uploadPhoto(dataUrl, recordId) {
+  const path = `${session.user.id}/${recordId}.jpg`;
+  const { error } = await sb.storage.from(BUCKET)
+    .upload(path, dataURLtoBlob(dataUrl), { contentType: 'image/jpeg', upsert: true });
+  if (error) { console.error(error); return null; }
+  return path;
+}
+
+/* --- 端末に残っている記録をアカウントへ移す（初回ログイン時に一度だけ） --- */
+async function migrateLocalToCloud() {
+  const local = loadRecords();
+  if (!local.length) return;
+  if (!confirm(`この端末に ${local.length} 件の記録があります。\nアカウントに移しますか？\n\n移した記録はすべて「自分だけ」の公開範囲になります。`)) return;
+
+  const bar = $('#syncNote');
+  let done = 0, failed = 0;
+  for (const r of local) {
+    const id = crypto.randomUUID();
+    let path = null;
+    if (r.photo && r.photo.startsWith('data:')) path = await uploadPhoto(r.photo, id);
+    const { error } = await sb.from('records').insert(
+      toRow({ ...r, id, photo_path: path }));
+    if (error) { failed++; console.error(error); } else done++;
+    if (bar) bar.textContent = `引き継ぎ中… ${done + failed} / ${local.length}`;
+  }
+  if (failed === 0) {
+    lsSet(K_REC, '[]');                                          /* 全件成功したときだけ消す */
+    toast(`${done} 件を引き継ぎました`);
+  } else {
+    toast(`${failed} 件失敗しました。端末のデータは残しています`);
+  }
+  if (bar) bar.textContent = '';
+}
+
+/* --- 画面が使う入口。ログイン有無で行き先が変わる --- */
+async function refreshRecords() {
+  RECORDS = cloudReady() ? await cloudList() : loadRecords();
+}
+async function addRecord(rec) {
+  if (!cloudReady()) { RECORDS.push(rec); saveRecords(RECORDS); return true; }
+  const id = crypto.randomUUID();
+  let path = null;
+  if (rec.photo) path = await uploadPhoto(rec.photo, id);
+  const { error } = await sb.from('records').insert(toRow({ ...rec, id, photo_path: path }));
+  if (error) { toast('保存できませんでした'); console.error(error); return false; }
+  await refreshRecords();
+  return true;
+}
+async function removeRecord(id) {
+  if (!cloudReady()) {
+    RECORDS = RECORDS.filter(r => String(r.id) !== String(id)); saveRecords(RECORDS); return;
+  }
+  const rec = RECORDS.find(r => String(r.id) === String(id));
+  if (rec?.photo_path) await sb.storage.from(BUCKET).remove([rec.photo_path]);
+  const { error } = await sb.from('records').delete().eq('id', id);
+  if (error) { toast('削除できませんでした'); console.error(error); return; }
+  await refreshRecords();
+}
+
+/* ============================================================
    3. SUGGESTION ENGINE
    自由入力はローカル解析。本番では analyzeText() を
    サーバー経由の LLM 呼び出しに差し替えれば UI はそのまま。
@@ -1059,15 +1234,21 @@ function resetForm() {
   $('#fDate').value = iso(); rating = 0; renderStars();
   photo = null; $('#photoThumb').hidden = true;
 }
-function saveNow() {
+async function saveNow() {
   const name = $('#fName').value.trim();
   if (!name) { toast('カクテル名を入れてください'); $('#fName').focus(); return; }
-  RECORDS.push({ id:Date.now(), date:$('#fDate').value || iso(), mood:$('#fMood').value,
-    cocktail:name, bar:$('#fBar').value.trim(), memo:$('#fMemo').value.trim(),
-    rating, photo, createdAt:new Date().toISOString() });
-  saveRecords(RECORDS);
+  const btn = $('#save');
+  btn.disabled = true;
+  const ok = await addRecord({
+    id: Date.now(), date: $('#fDate').value || iso(), mood: $('#fMood').value,
+    cocktail: name, bar: $('#fBar').value.trim(), memo: $('#fMemo').value.trim(),
+    rating, photo, createdAt: new Date().toISOString()
+  });
+  btn.disabled = false;
+  if (!ok) return;
   const d = $('#fDate').value || iso();
-  resetForm(); toast('記録しました');
+  resetForm();
+  toast(cloudReady() ? '記録しました' : '記録しました（この端末のみ）');
   const [y, m] = d.split('-').map(Number);
   calY = y; calM = m - 1; sel = d;
   setTimeout(() => show('s-cal'), 520);
@@ -1130,7 +1311,9 @@ function renderRecords() {
     const m = MOOD_BY_ID[r.mood] || { plain:'—', color:'var(--gold)' };
     const c = COCKTAILS.find(x => x.jp === r.cocktail || x.n === r.cocktail);
     return `<div class="rec">
-      <div class="thumb">${r.photo ? `<img src="${r.photo}" alt="">` : (c ? glassSVG(c, 56) : '')}</div>
+      <div class="thumb">${r.photo_path ? `<img data-photo="${esc(r.photo_path)}" alt="">`
+                          : r.photo ? `<img src="${r.photo}" alt="">`
+                          : (c ? glassSVG(c, 56) : '')}</div>
       <div class="info">
         <div class="rn">${esc(c ? c.n : r.cocktail)}</div>
         ${c ? `<div class="c-kana">${esc(c.jp)}</div>` : ''}
@@ -1141,9 +1324,12 @@ function renderRecords() {
         <button class="del" data-del="${r.id}">削除</button>
       </div></div>`;
   }).join('');
-  $$('[data-del]').forEach(b => b.addEventListener('click', () => {
-    RECORDS = RECORDS.filter(r => r.id !== +b.dataset.del); saveRecords(RECORDS); renderCal(); toast('削除しました');
+  $$('[data-del]').forEach(b => b.addEventListener('click', async () => {
+    b.disabled = true;
+    await removeRecord(b.dataset.del);
+    renderCal(); toast('削除しました');
   }));
+  fillPhotos($('#recList'));
 }
 
 /* ============================================================
@@ -1238,7 +1424,87 @@ function drawModeScenes() {
 /* ============================================================
    11. INIT
    ============================================================ */
-function init() {
+/* ============================================================
+   10.5 AUTH — ログイン画面の動き
+   ============================================================ */
+function note(msg) { $('#authNote').textContent = msg || ''; }
+
+function renderAccount() {
+  const inOK = cloudReady();
+  $('#authIn').hidden = !inOK;
+  $('#authOut').hidden = inOK;
+  if (inOK) {
+    $('#whoName').textContent = profile?.display_name || 'Guest';
+    $('#whoMail').textContent = session.user.email || '';
+  }
+  if (!sb) note('接続設定が未完了です。端末のみに保存されます。');
+}
+
+async function loadProfile() {
+  const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+  profile = data || null;
+}
+
+async function afterAuthChange(justSignedIn) {
+  if (cloudReady()) {
+    await loadProfile();
+    if (justSignedIn) await migrateLocalToCloud();
+  }
+  await refreshRecords();
+  renderAccount(); renderCal(); renderCollection();
+}
+
+async function doLogin() {
+  const email = $('#aEmail').value.trim(), pass = $('#aPass').value;
+  if (!sb) { note('接続設定が未完了です'); return; }
+  if (!email || !pass) { note('メールとパスワードを入れてください'); return; }
+  note('ログイン中…');
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { note(error.message); return; }
+  session = data.session; note('');
+  $('#aPass').value = '';
+  await afterAuthChange(true);
+  toast('ログインしました');
+}
+
+async function doSignup() {
+  const email = $('#aEmail').value.trim(), pass = $('#aPass').value;
+  if (!sb) { note('接続設定が未完了です'); return; }
+  if (!email || !pass) { note('メールとパスワードを入れてください'); return; }
+  if (pass.length < 6) { note('パスワードは6文字以上にしてください'); return; }
+  if (!$('#aAge').checked) { note('20歳以上の確認にチェックを入れてください'); return; }
+  note('登録中…');
+  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  if (error) { note(error.message); return; }
+  if (!data.session) {                       /* メール確認が有効な場合はここで止まる */
+    note('確認メールを送りました。リンクを開いてからログインしてください。');
+    return;
+  }
+  session = data.session; note('');
+  $('#aPass').value = '';
+  await afterAuthChange(true);
+  toast('登録しました');
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  session = null; profile = null; urlCache.clear();
+  await afterAuthChange(false);
+  toast('ログアウトしました');
+}
+
+async function doReset() {
+  const email = $('#aEmail').value.trim();
+  if (!sb) { note('接続設定が未完了です'); return; }
+  if (!email) { note('メールを入れてから押してください'); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
+  note(error ? error.message : '再設定メールを送りました');
+}
+
+/* ============================================================
+   11. INIT
+   ============================================================ */
+async function init() {
   renderMoods(); renderStars();
   $('#fMood').innerHTML = MOODS.map(m => `<option value="${m.id}">${m.plain}</option>`).join('');
   $('#names').innerHTML = COCKTAILS.map(c => `<option value="${c.jp}">`).join('');
@@ -1261,11 +1527,28 @@ function init() {
   $$('.nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
   $$('.mode-card').forEach(c => c.addEventListener('click', () => { setTheme(c.dataset.mode); toast(c.querySelector('.mode-jp').textContent + ' に切り替えました'); }));
 
+  $('#btnLogin').addEventListener('click', doLogin);
+  $('#btnSignup').addEventListener('click', doSignup);
+  $('#btnLogout').addEventListener('click', doLogout);
+  $('#btnReset').addEventListener('click', doReset);
+  $('#aPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
   renderMoonToday();
   setTheme(lsGet(K_THEME) || 'bar');
   window.addEventListener('resize', drawSky);
+
+  /* 前回のログインが残っていれば引き継ぐ */
+  if (initSupabase()) {
+    const { data } = await sb.auth.getSession();
+    session = data.session || null;
+    if (session) await loadProfile();
+    sb.auth.onAuthStateChange((_e, s) => { session = s; });
+  }
+  await refreshRecords();
+  renderAccount();
   renderCal();
 }
+window.show = show;          /* HTML 内の onclick から呼ぶため */
 init();
 </script>
 </body>

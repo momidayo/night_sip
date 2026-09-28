@@ -397,9 +397,48 @@ select option { background: var(--bg-2); color: var(--text); }
 }
 .linklike:hover { color: var(--gold); }
 .auth-note { font-size: 11.5px; color: var(--gold); line-height: 1.8; margin-top: 12px; min-height: 1em; }
-.who-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.who-name { font-size: 15px; }
-.who-mail { font-size: 11.5px; color: var(--faint); margin-top: 2px; word-break: break-all; }
+.who-row { display: flex; align-items: center; gap: 14px; }
+.who-text { min-width: 0; }
+.who-name { font-size: 17px; }
+.who-user { font-size: 12px; color: var(--gold-2); margin-top: 1px; }
+.who-mail { font-size: 11px; color: var(--faint); margin-top: 3px; word-break: break-all; }
+.hint { font-size: 11px; color: var(--faint); line-height: 1.8; margin: 2px 0 0; }
+
+/* ---------- avatar ---------- */
+.avatar {
+  width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none;
+  border: 1px solid var(--line); background: rgba(0,0,0,.3); display: block;
+}
+.avatar.lg { width: 62px; height: 62px; }
+.avatar-fallback {
+  display: grid; place-items: center; font-family: var(--f-en);
+  font-size: 18px; color: var(--gold); letter-spacing: .04em;
+}
+.avatar-fallback.lg { font-size: 24px; }
+
+/* ---------- follow ---------- */
+.search-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+.search-row input { flex: 1; }
+.search-row .btn { flex: none; margin-top: 0; }
+.person {
+  display: flex; align-items: center; gap: 12px; padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.person:last-child { border-bottom: none; }
+.person .pt { flex: 1; min-width: 0; }
+.person .pn { font-size: 14px; }
+.person .pu { font-size: 11.5px; color: var(--gold-2); margin-top: 1px; }
+.person .pacts { display: flex; gap: 8px; flex: none; }
+.person .btn { margin-top: 0; width: auto; padding: 7px 14px; font-size: 12px; letter-spacing: .06em; }
+.person .state { font-size: 11.5px; color: var(--faint); }
+.sub-head {
+  font-size: 11.5px; letter-spacing: .16em; color: var(--dim);
+  margin: 22px 0 4px; display: flex; align-items: center; gap: 8px;
+}
+.badge {
+  background: var(--gold); color: #150d05; border-radius: 999px;
+  font-size: 10.5px; padding: 1px 8px; letter-spacing: 0;
+}
 
 /* ---------- collection ---------- */
 .coll { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -579,14 +618,56 @@ select option { background: var(--bg-2); color: var(--text); }
       <!-- ログイン中 -->
       <div id="authIn" hidden>
         <div class="who-row">
-          <div>
+          <img id="myAvatar" class="avatar lg" alt="">
+          <div class="who-text">
             <div class="who-name" id="whoName">—</div>
+            <div class="who-user" id="whoUser"></div>
             <div class="who-mail" id="whoMail"></div>
           </div>
+        </div>
+        <div class="auth-btns">
+          <button class="btn sm plain" id="btnEditProfile">プロフィールを編集</button>
           <button class="btn sm plain" id="btnLogout">ログアウト</button>
         </div>
+
+        <!-- 編集フォーム -->
+        <div id="profileEdit" hidden>
+          <div class="hairline" style="margin:18px 0 14px"></div>
+          <div class="frow top"><label>アイコン</label>
+            <div class="photo-row">
+              <img id="avatarThumb" class="avatar" alt="">
+              <button class="photo-add" id="avatarAdd" aria-label="アイコンを選ぶ">＋</button>
+              <input type="file" id="fAvatar" accept="image/*" hidden>
+            </div>
+          </div>
+          <div class="frow"><label for="pName">ニックネーム</label>
+            <input type="text" id="pName" maxlength="20" placeholder="Momi"></div>
+          <div class="frow"><label for="pUser">ユーザー名</label>
+            <input type="text" id="pUser" maxlength="20" placeholder="momi"></div>
+          <p class="hint">ユーザー名は半角英数字とアンダースコア、3〜20文字。人から探してもらうときの目印になります。</p>
+          <div class="auth-btns">
+            <button class="btn sm" id="btnSaveProfile">保存</button>
+            <button class="btn sm plain" id="btnCancelProfile">やめる</button>
+          </div>
+          <div class="auth-note" id="profNote"></div>
+        </div>
+
         <div class="auth-note" id="syncNote"></div>
       </div>
+    </div>
+
+    <!-- フォロー -->
+    <div class="panel" id="followPanel" hidden>
+      <div class="form-title">フォロー</div>
+
+      <div class="search-row">
+        <input type="text" id="uSearch" placeholder="ユーザー名かニックネームで探す">
+        <button class="btn sm" id="btnSearch">探す</button>
+      </div>
+      <div id="searchResult"></div>
+
+      <div id="followPending"></div>
+      <div id="followLists"></div>
     </div>
 
     <div class="panel">
@@ -1218,10 +1299,10 @@ function renderStars() {
     `<button class="star ${i <= rating ? 'on' : ''}" data-v="${i}" aria-label="${i}点">${ICON.starO}</button>`).join('');
   $$('.star').forEach(s => s.addEventListener('click', () => { rating = rating === +s.dataset.v ? 0 : +s.dataset.v; renderStars(); }));
 }
-function shrink(file, cb) {
+function shrink(file, cb, max) {
   const fr = new FileReader();
   fr.onload = e => { const im = new Image(); im.onload = () => {
-    const k = Math.min(1, 900 / Math.max(im.width, im.height));
+    const k = Math.min(1, (max || 900) / Math.max(im.width, im.height));
     const cv = document.createElement('canvas');
     cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
     cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
@@ -1429,15 +1510,203 @@ function drawModeScenes() {
    ============================================================ */
 function note(msg) { $('#authNote').textContent = msg || ''; }
 
+/* アイコンがなければ頭文字を出す */
+function avatarHTML(p, cls) {
+  const initial = (p?.display_name || p?.username || '?').trim().charAt(0).toUpperCase();
+  return p?.avatar_url
+    ? `<img class="avatar ${cls||''}" src="${esc(p.avatar_url)}" alt="">`
+    : `<div class="avatar avatar-fallback ${cls||''}">${esc(initial)}</div>`;
+}
+
 function renderAccount() {
   const inOK = cloudReady();
   $('#authIn').hidden = !inOK;
   $('#authOut').hidden = inOK;
+  $('#followPanel').hidden = !inOK;
   if (inOK) {
     $('#whoName').textContent = profile?.display_name || 'Guest';
+    $('#whoUser').textContent = profile?.username ? '@' + profile.username : '';
     $('#whoMail').textContent = session.user.email || '';
+    const av = $('#myAvatar');
+    if (profile?.avatar_url) { av.src = profile.avatar_url; av.classList.remove('avatar-fallback'); av.textContent = ''; }
+    else { av.removeAttribute('src'); av.outerHTML = avatarHTML(profile, 'lg').replace('class="avatar', 'id="myAvatar" class="avatar'); }
   }
   if (!sb) note('接続設定が未完了です。端末のみに保存されます。');
+}
+
+/* ============================================================
+   10.6 PROFILE — ニックネームとアイコン
+   ============================================================ */
+const AVATARS = 'avatars';
+let avatarPick = null;
+
+function openProfileEdit() {
+  $('#pName').value = profile?.display_name || '';
+  $('#pUser').value = profile?.username || '';
+  avatarPick = null;
+  $('#avatarThumb').outerHTML = avatarHTML(profile, '').replace('class="avatar', 'id="avatarThumb" class="avatar');
+  $('#profNote').textContent = '';
+  $('#profileEdit').hidden = false;
+}
+
+async function saveProfileEdit() {
+  const name = $('#pName').value.trim();
+  const uname = $('#pUser').value.trim().toLowerCase();
+  const pn = $('#profNote');
+  if (!name) { pn.textContent = 'ニックネームを入れてください'; return; }
+  if (!/^[a-z0-9_]{3,20}$/.test(uname)) {
+    pn.textContent = 'ユーザー名は半角英数字とアンダースコア、3〜20文字にしてください'; return;
+  }
+  pn.textContent = '保存中…';
+  const patch = { display_name: name, username: uname };
+
+  if (avatarPick) {
+    const path = `${session.user.id}/avatar.jpg`;
+    const { error: upErr } = await sb.storage.from(AVATARS)
+      .upload(path, dataURLtoBlob(avatarPick), { contentType: 'image/jpeg', upsert: true });
+    if (upErr) { pn.textContent = 'アイコンを保存できませんでした'; console.error(upErr); return; }
+    const { data } = sb.storage.from(AVATARS).getPublicUrl(path);
+    patch.avatar_url = data.publicUrl + '?t=' + Date.now();   /* 差し替えを反映させる */
+  }
+
+  const { error } = await sb.from('profiles').update(patch).eq('id', session.user.id);
+  if (error) {
+    pn.textContent = error.code === '23505'
+      ? 'そのユーザー名はすでに使われています' : error.message;
+    return;
+  }
+  await loadProfile();
+  $('#profileEdit').hidden = true;
+  renderAccount();
+  toast('プロフィールを保存しました');
+}
+
+/* ============================================================
+   10.7 FOLLOW — 探す・申請する・承認する
+   ============================================================ */
+let followOut = [], followIn = [];
+const PCOLS = 'id,username,display_name,avatar_url';
+
+async function loadFollows() {
+  const uid = session.user.id;
+  const { data, error } = await sb.from('follows').select(
+    `follower_id, followee_id, status, created_at,
+     follower:profiles!follows_follower_id_fkey(${PCOLS}),
+     followee:profiles!follows_followee_id_fkey(${PCOLS})`);
+  if (error) { console.error(error); return; }
+  followOut = data.filter(r => r.follower_id === uid);   /* 自分が申請した */
+  followIn  = data.filter(r => r.followee_id === uid);   /* 自分宛て */
+}
+
+function relationTo(id) {
+  const out = followOut.find(r => r.followee_id === id);
+  if (out) return out.status;                            /* pending / accepted */
+  if (followIn.find(r => r.follower_id === id && r.status === 'pending')) return 'incoming';
+  return null;
+}
+
+function personHTML(p, actions) {
+  return `<div class="person">
+    ${avatarHTML(p, '')}
+    <div class="pt">
+      <div class="pn">${esc(p.display_name || 'Guest')}</div>
+      <div class="pu">@${esc(p.username)}</div>
+    </div>
+    <div class="pacts">${actions}</div>
+  </div>`;
+}
+
+async function doSearch() {
+  const q = $('#uSearch').value.trim().replace(/[,()%]/g, '');
+  const box = $('#searchResult');
+  if (q.length < 2) { box.innerHTML = `<div class="hint">2文字以上で探してください</div>`; return; }
+  box.innerHTML = `<div class="hint">探しています…</div>`;
+  const { data, error } = await sb.from('profiles').select(PCOLS)
+    .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+    .neq('id', session.user.id).limit(20);
+  if (error) { box.innerHTML = `<div class="hint">検索できませんでした</div>`; console.error(error); return; }
+  if (!data.length) { box.innerHTML = `<div class="hint">見つかりませんでした</div>`; return; }
+
+  box.innerHTML = data.map(p => {
+    const rel = relationTo(p.id);
+    const act = rel === 'accepted' ? `<span class="state">フォロー中</span>`
+              : rel === 'pending'  ? `<span class="state">申請中</span>`
+              : rel === 'incoming' ? `<span class="state">相手から申請中</span>`
+              : `<button class="btn plain" data-req="${p.id}">申請する</button>`;
+    return personHTML(p, act);
+  }).join('');
+
+  $$('[data-req]').forEach(b => b.addEventListener('click', async () => {
+    b.disabled = true;
+    const { error } = await sb.from('follows').insert(
+      { follower_id: session.user.id, followee_id: b.dataset.req, status: 'pending' });
+    if (error) { toast('申請できませんでした'); console.error(error); b.disabled = false; return; }
+    await loadFollows(); renderFollows(); doSearch();
+    toast('申請しました');
+  }));
+}
+
+function renderFollows() {
+  /* 自分宛ての承認待ち */
+  const pend = followIn.filter(r => r.status === 'pending');
+  $('#followPending').innerHTML = !pend.length ? '' :
+    `<div class="sub-head">承認待ち<span class="badge">${pend.length}</span></div>` +
+    pend.map(r => personHTML(r.follower,
+      `<button class="btn" data-acc="${r.follower_id}">承認</button>
+       <button class="btn plain" data-rej="${r.follower_id}">拒否</button>`)).join('');
+
+  const following = followOut.filter(r => r.status === 'accepted');
+  const followers = followIn.filter(r => r.status === 'accepted');
+  const sent = followOut.filter(r => r.status === 'pending');
+
+  let h = '';
+  if (sent.length) h += `<div class="sub-head">申請中<span class="badge">${sent.length}</span></div>` +
+    sent.map(r => personHTML(r.followee,
+      `<button class="btn plain" data-cancel="${r.followee_id}">取り消す</button>`)).join('');
+
+  h += `<div class="sub-head">フォロー中<span class="badge">${following.length}</span></div>`;
+  h += following.length ? following.map(r => personHTML(r.followee,
+        `<button class="btn plain" data-unf="${r.followee_id}">解除</button>`)).join('')
+     : `<div class="hint">まだ誰もフォローしていません</div>`;
+
+  h += `<div class="sub-head">フォロワー<span class="badge">${followers.length}</span></div>`;
+  h += followers.length ? followers.map(r => personHTML(r.follower,
+        `<button class="btn plain" data-kick="${r.follower_id}">外す</button>`)).join('')
+     : `<div class="hint">まだフォロワーはいません</div>`;
+
+  $('#followLists').innerHTML = h;
+
+  const uid = () => session.user.id;
+  const after = async () => { await loadFollows(); renderFollows(); };
+
+  $$('[data-acc]').forEach(b => b.addEventListener('click', async () => {
+    b.disabled = true;
+    await sb.from('follows').update({ status: 'accepted' })
+      .eq('follower_id', b.dataset.acc).eq('followee_id', uid());
+    await after(); toast('承認しました');
+  }));
+  $$('[data-rej]').forEach(b => b.addEventListener('click', async () => {
+    b.disabled = true;
+    await sb.from('follows').delete().eq('follower_id', b.dataset.rej).eq('followee_id', uid());
+    await after(); toast('拒否しました');
+  }));
+  $$('[data-cancel]').forEach(b => b.addEventListener('click', async () => {
+    b.disabled = true;
+    await sb.from('follows').delete().eq('follower_id', uid()).eq('followee_id', b.dataset.cancel);
+    await after(); toast('申請を取り消しました');
+  }));
+  $$('[data-unf]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('フォローを解除しますか？')) return;
+    b.disabled = true;
+    await sb.from('follows').delete().eq('follower_id', uid()).eq('followee_id', b.dataset.unf);
+    await after(); toast('解除しました');
+  }));
+  $$('[data-kick]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('この人を外すと、あなたの公開記録が見えなくなります。よろしいですか？')) return;
+    b.disabled = true;
+    await sb.from('follows').delete().eq('follower_id', b.dataset.kick).eq('followee_id', uid());
+    await after(); toast('外しました');
+  }));
 }
 
 async function loadProfile() {
@@ -1449,9 +1718,11 @@ async function afterAuthChange(justSignedIn) {
   if (cloudReady()) {
     await loadProfile();
     if (justSignedIn) await migrateLocalToCloud();
-  }
+    await loadFollows();
+  } else { followOut = []; followIn = []; }
   await refreshRecords();
   renderAccount(); renderCal(); renderCollection();
+  if (cloudReady()) renderFollows();
 }
 
 async function doLogin() {
@@ -1533,6 +1804,21 @@ async function init() {
   $('#btnReset').addEventListener('click', doReset);
   $('#aPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
+  $('#btnEditProfile').addEventListener('click', openProfileEdit);
+  $('#btnCancelProfile').addEventListener('click', () => { $('#profileEdit').hidden = true; });
+  $('#btnSaveProfile').addEventListener('click', saveProfileEdit);
+  $('#avatarAdd').addEventListener('click', () => $('#fAvatar').click());
+  $('#fAvatar').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    shrink(f, url => {
+      avatarPick = url;
+      const t = $('#avatarThumb');
+      t.outerHTML = `<img id="avatarThumb" class="avatar" src="${url}" alt="">`;
+    }, 400);
+  });
+  $('#btnSearch').addEventListener('click', doSearch);
+  $('#uSearch').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
   renderMoonToday();
   setTheme(lsGet(K_THEME) || 'bar');
   window.addEventListener('resize', drawSky);
@@ -1541,11 +1827,12 @@ async function init() {
   if (initSupabase()) {
     const { data } = await sb.auth.getSession();
     session = data.session || null;
-    if (session) await loadProfile();
+    if (session) { await loadProfile(); await loadFollows(); }
     sb.auth.onAuthStateChange((_e, s) => { session = s; });
   }
   await refreshRecords();
   renderAccount();
+  if (cloudReady()) renderFollows();
   renderCal();
 }
 window.show = show;          /* HTML 内の onclick から呼ぶため */

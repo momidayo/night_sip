@@ -440,6 +440,28 @@ select option { background: var(--bg-2); color: var(--text); }
   font-size: 10.5px; padding: 1px 8px; letter-spacing: 0;
 }
 
+/* ---------- feed ---------- */
+.feed-item { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.feed-item:first-child { padding-top: 0; }
+.feed-item:last-child { border-bottom: none; padding-bottom: 0; }
+.feed-head { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.feed-head .ft { flex: 1; min-width: 0; }
+.feed-head .fn { font-size: 13.5px; }
+.feed-head .fu { font-size: 11px; color: var(--gold-2); margin-top: 1px; }
+.feed-head .fd { font-size: 11px; color: var(--faint); flex: none; }
+.feed-photo { width: 100%; border-radius: 14px; display: block; margin-bottom: 12px; }
+.feed-glass { text-align: center; padding: 4px 0 10px; }
+.masked { color: var(--faint); font-style: italic; }
+
+/* ---------- visibility ---------- */
+.vis-toggle {
+  background: none; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--dim); font-family: inherit; font-size: 10.5px; letter-spacing: .06em;
+  padding: 3px 11px; cursor: pointer; margin-top: 8px;
+}
+.vis-toggle:hover { border-color: var(--line-strong); color: var(--gold); }
+.vis-toggle.on { color: var(--gold); border-color: var(--line-strong); }
+
 /* ---------- collection ---------- */
 .coll { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .coll-item { text-align: center; border: 1px solid var(--line); border-radius: 14px; padding: 10px 4px 8px; background: rgba(0,0,0,.2); }
@@ -456,12 +478,12 @@ select option { background: var(--bg-2); color: var(--text); }
   border-top: 1px solid var(--line);
 }
 .nav button {
-  flex: 1; background: none; border: none; cursor: pointer; padding: 4px 0;
+  flex: 1; min-width: 0; background: none; border: none; cursor: pointer; padding: 4px 0;
   display: flex; flex-direction: column; align-items: center; gap: 5px;
-  font-family: var(--f-en); font-size: 11px; letter-spacing: .1em;
-  color: var(--faint); transition: color .25s;
+  font-family: var(--f-en); font-size: 10.5px; letter-spacing: .04em;
+  color: var(--faint); transition: color .25s; white-space: nowrap;
 }
-.nav button svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+.nav button svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
 .nav button.active { color: var(--gold); }
 .nav button.active::after { content: ''; width: 14px; height: 1px; background: var(--gold); }
 
@@ -557,6 +579,13 @@ select option { background: var(--bg-2); color: var(--text); }
       <div class="frow top"><label for="fMemo">メモ（任意）</label>
         <textarea id="fMemo" rows="2" placeholder="雰囲気も音楽も最高だった。&#10;大切な友人と乾杯。"></textarea></div>
       <div class="frow"><label>評価</label><div class="stars" id="fStars"></div></div>
+      <div class="frow vis-only" hidden><label for="fVis">公開範囲</label>
+        <select id="fVis">
+          <option value="private">自分だけ</option>
+          <option value="followers">フォロワーに公開</option>
+        </select></div>
+      <div class="frow vis-only" hidden><label></label>
+        <label class="age-check"><input type="checkbox" id="fHideBar"> バー名は伏せる</label></div>
       <button class="btn" id="save">
         <svg viewBox="0 0 24 24"><path d="M5 4h14l-6 8v7l-2 1v-8z"/></svg>記録する
       </button>
@@ -591,7 +620,18 @@ select option { background: var(--bg-2); color: var(--text); }
     </div>
   </section>
 
-  <!-- ============ ④ マイページ ============ -->
+  <!-- ============ ④ フィード ============ -->
+  <section id="s-feed" class="screen">
+    <div class="screen-head">
+      <span class="screen-num">04</span><span class="screen-title">フィード</span>
+      <div class="screen-sub">フォローしている人が公開した一杯</div>
+    </div>
+    <div class="panel">
+      <div id="feedList"></div>
+    </div>
+  </section>
+
+  <!-- ============ ⑤ マイページ ============ -->
   <section id="s-my" class="screen">
     <div class="screen-head">
       <span class="screen-num">04</span><span class="screen-title">マイページ</span>
@@ -721,6 +761,8 @@ select option { background: var(--bg-2); color: var(--text); }
     <svg viewBox="0 0 24 24"><path d="M20.5 13.5A8.5 8.5 0 0 1 10.5 3.5a8.5 8.5 0 1 0 10 10z"/></svg>Mood</button>
   <button data-go="s-suggest">
     <svg viewBox="0 0 24 24"><path d="M4 4h16l-7 9v7l-2 1v-8z"/></svg>Recommend</button>
+  <button data-go="s-feed">
+    <svg viewBox="0 0 24 24"><path d="M4 6h10M4 12h16M4 18h13"/><circle cx="19" cy="6" r="2.2"/></svg>Feed</button>
   <button data-go="s-cal">
     <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>Calendar</button>
   <button data-go="s-my">
@@ -959,12 +1001,16 @@ function initSupabase() {
 const toRow = r => ({
   id: r.id, user_id: session.user.id, drank_on: r.date, cocktail_name: r.cocktail,
   bar_name: r.bar || null, mood: r.mood, memo: r.memo || null,
-  rating: r.rating, photo_path: r.photo_path || null, visibility: 'private'
+  rating: r.rating, photo_path: r.photo_path || null,
+  visibility: r.visibility === 'followers' ? 'followers' : 'private',
+  hide_bar: !!r.hide_bar
 });
 const fromRow = x => ({
   id: x.id, date: x.drank_on, cocktail: x.cocktail_name, bar: x.bar_name || '',
   mood: x.mood, memo: x.memo || '', rating: x.rating,
-  photo: null, photo_path: x.photo_path, createdAt: x.created_at
+  photo: null, photo_path: x.photo_path, createdAt: x.created_at,
+  visibility: x.visibility || 'private', hide_bar: !!x.hide_bar,
+  author: x.author || null
 });
 
 async function cloudList() {
@@ -1048,6 +1094,27 @@ async function addRecord(rec) {
   await refreshRecords();
   return true;
 }
+/* 保存済みの記録の公開範囲を切り替える */
+async function setVisibility(id, vis) {
+  if (!cloudReady()) return;
+  const { error } = await sb.from('records').update({ visibility: vis }).eq('id', id);
+  if (error) { toast('変更できませんでした'); console.error(error); return; }
+  const r = RECORDS.find(x => String(x.id) === String(id));
+  if (r) r.visibility = vis;
+}
+
+/* フォロー中の人が公開した記録 */
+async function loadFeed() {
+  const ids = followOut.filter(r => r.status === 'accepted').map(r => r.followee_id);
+  if (!ids.length) return [];
+  const { data, error } = await sb.from('records')
+    .select(`*, author:profiles!records_user_id_fkey(${PCOLS})`)
+    .eq('visibility', 'followers').in('user_id', ids)
+    .order('drank_on', { ascending: false }).limit(50);
+  if (error) { console.error(error); return null; }
+  return data.map(fromRow);
+}
+
 async function removeRecord(id) {
   if (!cloudReady()) {
     RECORDS = RECORDS.filter(r => String(r.id) !== String(id)); saveRecords(RECORDS); return;
@@ -1244,6 +1311,7 @@ function show(id) {
   $$('.nav button').forEach(b => b.classList.toggle('active', b.dataset.go === id));
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (id === 's-cal') renderCal();
+  if (id === 's-feed') renderFeed();
   if (id === 's-my') renderCollection();
 }
 
@@ -1314,6 +1382,8 @@ function resetForm() {
   $('#fName').value = ''; $('#fBar').value = ''; $('#fMemo').value = '';
   $('#fDate').value = iso(); rating = 0; renderStars();
   photo = null; $('#photoThumb').hidden = true;
+  $('#fVis').value = 'private';                 /* 毎回「自分だけ」に戻す */
+  $('#fHideBar').checked = false;
 }
 async function saveNow() {
   const name = $('#fName').value.trim();
@@ -1323,7 +1393,9 @@ async function saveNow() {
   const ok = await addRecord({
     id: Date.now(), date: $('#fDate').value || iso(), mood: $('#fMood').value,
     cocktail: name, bar: $('#fBar').value.trim(), memo: $('#fMemo').value.trim(),
-    rating, photo, createdAt: new Date().toISOString()
+    rating, photo, createdAt: new Date().toISOString(),
+    visibility: cloudReady() ? $('#fVis').value : 'private',
+    hide_bar: cloudReady() && $('#fHideBar').checked
   });
   btn.disabled = false;
   if (!ok) return;
@@ -1402,9 +1474,19 @@ function renderRecords() {
         <span class="mood-chip" style="color:${m.color}">☆ ${m.plain}</span>
         ${r.memo ? `<div class="rmemo">${esc(r.memo)}</div>` : ''}
         <div class="rstars">${starStr(r.rating)}</div>
+        ${cloudReady() ? `<button class="vis-toggle ${r.visibility === 'followers' ? 'on' : ''}"
+           data-vis="${r.id}">${r.visibility === 'followers' ? '公開中' : '自分だけ'}</button>` : ''}
         <button class="del" data-del="${r.id}">削除</button>
       </div></div>`;
   }).join('');
+  $$('[data-vis]').forEach(b => b.addEventListener('click', async () => {
+    const r = RECORDS.find(x => String(x.id) === b.dataset.vis);
+    const next = r.visibility === 'followers' ? 'private' : 'followers';
+    b.disabled = true;
+    await setVisibility(r.id, next);
+    renderRecords();
+    toast(next === 'followers' ? 'フォロワーに公開しました' : '自分だけに戻しました');
+  }));
   $$('[data-del]').forEach(b => b.addEventListener('click', async () => {
     b.disabled = true;
     await removeRecord(b.dataset.del);
@@ -1414,7 +1496,57 @@ function renderRecords() {
 }
 
 /* ============================================================
-   9. SCREEN 04 — my page
+   8.5 SCREEN 04 — feed
+   ============================================================ */
+async function renderFeed() {
+  const box = $('#feedList');
+  if (!cloudReady()) {
+    box.innerHTML = `<div class="empty">ログインすると、フォローした人の一杯が並びます。
+      <br><br><button class="btn" onclick="show('s-my')">マイページへ</button></div>`;
+    return;
+  }
+  box.innerHTML = `<div class="empty">読み込んでいます…</div>`;
+  const list = await loadFeed();
+  if (list === null) { box.innerHTML = `<div class="empty">読み込めませんでした</div>`; return; }
+  if (!list.length) {
+    const n = followOut.filter(r => r.status === 'accepted').length;
+    box.innerHTML = `<div class="empty">${n
+      ? 'フォロー中の人が公開した記録はまだありません。'
+      : 'まだ誰もフォローしていません。<br>マイページから探せます。'}
+      <br><br><button class="btn" onclick="show('s-my')">マイページへ</button></div>`;
+    return;
+  }
+
+  box.innerHTML = list.map(r => {
+    const a = r.author || {};
+    const m = MOOD_BY_ID[r.mood] || { plain: '—', color: 'var(--gold)' };
+    const c = COCKTAILS.find(x => x.jp === r.cocktail || x.n === r.cocktail);
+    const d = new Date(r.date + 'T21:00:00');
+    return `<article class="feed-item">
+      <div class="feed-head">
+        ${avatarHTML(a, '')}
+        <div class="ft">
+          <div class="fn">${esc(a.display_name || 'Guest')}</div>
+          <div class="fu">@${esc(a.username || '')}</div>
+        </div>
+        <div class="fd">${d.getMonth() + 1}/${d.getDate()}</div>
+      </div>
+      ${r.photo_path ? `<img class="feed-photo" data-photo="${esc(r.photo_path)}" alt="">`
+                     : c ? `<div class="feed-glass">${glassSVG(c, 96)}</div>` : ''}
+      <div class="rn" style="font-family:var(--f-en);font-size:19px">${esc(c ? c.n : r.cocktail)}</div>
+      ${c ? `<div class="c-kana">${esc(c.jp)}</div>` : ''}
+      ${r.hide_bar ? `<div class="rb"><span class="masked">場所は非公開</span></div>`
+        : r.bar ? `<div class="rb">${ICON.pin}${esc(r.bar)}</div>` : ''}
+      <span class="mood-chip" style="color:${m.color}">☆ ${m.plain}</span>
+      ${r.memo ? `<div class="rmemo">${esc(r.memo)}</div>` : ''}
+      <div class="rstars">${starStr(r.rating)}</div>
+    </article>`;
+  }).join('');
+  fillPhotos(box);
+}
+
+/* ============================================================
+   9. SCREEN 05 — my page
    ============================================================ */
 function renderCollection() {
   const counts = {};
@@ -1523,6 +1655,7 @@ function renderAccount() {
   $('#authIn').hidden = !inOK;
   $('#authOut').hidden = inOK;
   $('#followPanel').hidden = !inOK;
+  $$('.vis-only').forEach(el => { el.hidden = !inOK; });   /* 公開範囲はログイン時のみ */
   if (inOK) {
     $('#whoName').textContent = profile?.display_name || 'Guest';
     $('#whoUser').textContent = profile?.username ? '@' + profile.username : '';

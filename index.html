@@ -551,6 +551,34 @@ button.count:hover { border-color: var(--line-strong); box-shadow: var(--glow); 
 }
 .note { font-size: 11.5px; color: var(--faint); line-height: 2; text-align: center; margin-top: 16px; }
 
+/* ---------- day sheet ---------- */
+#dayModal { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; justify-content: center; }
+#dayModal[hidden] { display: none; }
+.modal-back {
+  position: absolute; inset: 0; background: rgba(6, 4, 10, .5);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  animation: fadeIn .28s ease both;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetUp { from { transform: translateY(34px); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-sheet {
+  position: relative; width: 100%; max-width: 430px; max-height: 84vh; overflow-y: auto;
+  border: 1px solid var(--line); border-bottom: none; border-radius: 26px 26px 0 0;
+  background: linear-gradient(180deg, var(--panel-2), rgba(0,0,0,.62));
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 -22px 60px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05);
+  padding: 8px 18px calc(26px + env(safe-area-inset-bottom));
+  animation: sheetUp .34s cubic-bezier(.2,.9,.3,1) both;
+}
+.sheet-grip { width: 40px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 6px auto 12px; opacity: .7; }
+.modal-close {
+  position: absolute; top: 12px; right: 14px; width: 32px; height: 32px;
+  background: none; border: none; color: var(--faint); font-size: 22px;
+  line-height: 1; cursor: pointer; font-family: inherit;
+}
+.modal-close:hover { color: var(--gold); }
+body.sheet-open { overflow: hidden; }
+
 /* ---------- toast ---------- */
 #toast {
   position: fixed; left: 50%; bottom: 108px; transform: translate(-50%, 14px);
@@ -700,10 +728,7 @@ button.count:hover { border-color: var(--line-strong); box-shadow: var(--glow); 
       </div>
     </div>
 
-    <div class="panel">
-      <div class="rec-date" id="recDate"></div>
-      <div id="recList"></div>
-    </div>
+    <p class="note" id="calHint"></p>
   </section>
 
   <!-- ============ ④ フィード ============ -->
@@ -880,6 +905,17 @@ button.count:hover { border-color: var(--line-strong); box-shadow: var(--glow); 
   <button data-go="s-my">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20c.9-3.8 3.9-5.8 7.4-5.8s6.5 2 7.4 5.8"/></svg>My Page</button>
 </nav>
+
+<!-- ============ その日の記録（カレンダーに重ねて出すシート） ============ -->
+<div id="dayModal" hidden>
+  <div class="modal-back" id="modalBack"></div>
+  <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="recDate">
+    <div class="sheet-grip"></div>
+    <button class="modal-close" id="modalClose" aria-label="閉じる">×</button>
+    <div class="rec-date" id="recDate"></div>
+    <div id="recList"></div>
+  </div>
+</div>
 
 <div id="toast"></div>
 
@@ -1420,6 +1456,7 @@ function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('s
 function iso(d) { const t = d || new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; }
 const SUB_OF = { 's-people': 's-my', 's-user': 's-my' };   /* 下タブの点灯先 */
 function show(id) {
+  if (id !== 's-cal' && !$('#dayModal').hidden) closeDay();   /* 他の画面へ移るときは閉じる */
   $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
   const lit = SUB_OF[id] || id;
   $$('.nav button').forEach(b => b.classList.toggle('active', b.dataset.go === lit));
@@ -1559,13 +1596,34 @@ function renderCal() {
   for (let i = 1; i <= tail; i++) h += `<button class="day out" disabled><span class="num">${i}</span><span class="dots"></span></button>`;
   $('#days').innerHTML = h;
 
-  $$('.day.has').forEach(c => c.addEventListener('click', () => { sel = c.dataset.d; renderCal(); }));
+  $$('.day.has').forEach(c => c.addEventListener('click', () => openDay(c.dataset.d)));
 
   $('#stMonth').textContent = RECORDS.filter(r => { const [y,m] = r.date.split('-').map(Number); return y === calY && m === calM + 1; }).length;
   $('#stTotal').textContent = RECORDS.length;
   $('#stKinds').textContent = new Set(RECORDS.map(r => r.cocktail)).size;
   if (cloudReady()) $('#cRecords').textContent = RECORDS.length;
-  renderRecords();
+
+  $('#calHint').textContent = cloudReady()
+    ? '日付をタップすると、その日の記録が開きます。'
+    : '記録を残すにはアカウントが必要です。マイページから登録できます。';
+
+  if (sheetOpen()) renderRecords();     /* 開いているシートの中身も更新する */
+}
+
+/* --- その日の記録をシートで開く --- */
+const sheetOpen = () => !$('#dayModal').hidden;
+
+function openDay(date) {
+  sel = date;
+  $('#dayModal').hidden = false;
+  document.body.classList.add('sheet-open');
+  renderCal();
+}
+function closeDay() {
+  $('#dayModal').hidden = true;
+  document.body.classList.remove('sheet-open');
+  sel = null;
+  renderCal();
 }
 const starStr = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
 
@@ -1580,13 +1638,7 @@ function renderRecords() {
   } else $('#recDate').innerHTML = '<span>最近の記録</span>';
 
   if (!list.length) {
-    $('#recList').innerHTML = cloudReady()
-      ? `<div class="empty">この日の記録はまだありません。<br>気分を選んで、最初の一杯を残しましょう。</div>
-         <button class="btn" onclick="show('s-mood')">気分を選ぶ</button>`
-      : `<div class="empty">記録を残すにはアカウントが必要です。<br>気分を選んで提案を見るだけなら、登録はいりません。</div>
-         <button class="btn" id="calLogin">ログイン・新規登録</button>`;
-    $('#calLogin')?.addEventListener('click',
-      () => showGate(true, '飲んだ一杯を記録するには、アカウントが必要です。', 's-cal'));
+    $('#recList').innerHTML = `<div class="empty">この日の記録はなくなりました。</div>`;
     return;
   }
   $('#recList').innerHTML = list.map(r => {
@@ -2199,8 +2251,18 @@ async function init() {
     const f = e.target.files[0]; if (!f) return;
     shrink(f, url => { photo = url; $('#photoThumb').src = url; $('#photoThumb').hidden = false; });
   });
-  $('#prev').addEventListener('click', () => { if (--calM < 0) { calM = 11; calY--; } sel = null; renderCal(); });
-  $('#next').addEventListener('click', () => { if (++calM > 11) { calM = 0; calY++; } sel = null; renderCal(); });
+  const month = step => () => {
+    if (sheetOpen()) closeDay();
+    calM += step;
+    if (calM < 0) { calM = 11; calY--; }
+    if (calM > 11) { calM = 0; calY++; }
+    sel = null; renderCal();
+  };
+  $('#prev').addEventListener('click', month(-1));
+  $('#next').addEventListener('click', month(1));
+  $('#modalClose').addEventListener('click', closeDay);
+  $('#modalBack').addEventListener('click', closeDay);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheetOpen()) closeDay(); });
   $$('.nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
   $$('.mode-card').forEach(c => c.addEventListener('click', () => { setTheme(c.dataset.mode); toast(c.querySelector('.mode-jp').textContent + ' に切り替えました'); }));
 

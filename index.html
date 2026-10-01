@@ -124,10 +124,6 @@ body {
 
 /* ---------- screen heading ---------- */
 .screen-head { text-align: center; padding: 20px 0 22px; }
-.screen-num {
-  font-family: var(--f-en); font-size: 20px;
-  color: var(--gold); letter-spacing: .1em; margin-right: 10px;
-}
 .screen-title { font-weight: 500; font-size: 17px; letter-spacing: .12em; }
 .screen-sub { font-size: 12.5px; color: var(--dim); letter-spacing: .08em; margin-top: 6px; }
 
@@ -382,6 +378,24 @@ select option { background: var(--bg-2); color: var(--text); }
 }
 .mode-card.on .mode-check { background: var(--gold); color: #150d05; border-color: var(--gold); }
 
+/* ---------- gate ---------- */
+#gate {
+  position: fixed; inset: 0; z-index: 40; overflow-y: auto;
+  background: var(--bg); background-image: var(--sky); background-attachment: fixed;
+  display: grid; place-items: center; padding: 28px 18px;
+}
+#gate[hidden] { display: none; }
+.gate-inner { width: 100%; max-width: 380px; }
+.gate-inner .masthead { padding-bottom: 26px; }
+.gate-panel { position: relative; padding: 26px 20px 22px; }
+.gate-close {
+  position: absolute; top: 10px; right: 12px; width: 32px; height: 32px;
+  background: none; border: none; color: var(--faint); font-size: 22px;
+  line-height: 1; cursor: pointer; font-family: inherit;
+}
+.gate-close:hover { color: var(--gold); }
+.gate-panel .frow { grid-template-columns: 76px 1fr; }
+
 /* ---------- account ---------- */
 .auth-lead { font-size: 12px; color: var(--dim); line-height: 1.9; margin: 0 0 16px; }
 .age-check {
@@ -439,6 +453,48 @@ select option { background: var(--bg-2); color: var(--text); }
   background: var(--gold); color: #150d05; border-radius: 999px;
   font-size: 10.5px; padding: 1px 8px; letter-spacing: 0;
 }
+
+/* ---------- counts ---------- */
+.counts { display: flex; gap: 6px; margin: 18px 0 4px; }
+.count {
+  flex: 1; position: relative; text-align: center; padding: 11px 4px;
+  border: 1px solid var(--line); border-radius: 14px; background: rgba(0,0,0,.2);
+  font-family: inherit; color: var(--text); cursor: default;
+}
+button.count { cursor: pointer; transition: border-color .2s, box-shadow .2s; }
+button.count:hover { border-color: var(--line-strong); box-shadow: var(--glow); }
+.count b { display: block; font-family: var(--f-en); font-size: 22px; color: var(--gold); font-weight: 400; }
+.count span { font-size: 10.5px; color: var(--dim); letter-spacing: .08em; }
+.dot-badge {
+  position: absolute; top: 8px; right: 10px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--gold); box-shadow: var(--glow);
+}
+
+/* ---------- sub screens ---------- */
+.sub-top { display: flex; align-items: center; gap: 14px; padding: 22px 0 16px; }
+.sub-title { font-weight: 500; font-size: 15px; letter-spacing: .12em; }
+.segs { display: flex; gap: 6px; margin-bottom: 8px; }
+.seg {
+  flex: 1; position: relative; padding: 9px 4px; border-radius: 999px;
+  border: 1px solid var(--line); background: transparent; color: var(--dim);
+  font-family: inherit; font-size: 12.5px; cursor: pointer; transition: .2s;
+}
+.seg:hover { border-color: var(--line-strong); }
+.seg.on { color: var(--gold); border-color: var(--line-strong); background: var(--accent-soft, rgba(229,190,118,.10)); }
+.seg-badge {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold); margin-left: 6px; vertical-align: middle;
+}
+
+/* ---------- user profile ---------- */
+.user-head { display: flex; align-items: center; gap: 16px; }
+.user-head .ut { flex: 1; min-width: 0; }
+.user-head .un { font-size: 18px; }
+.user-head .uu { font-size: 12px; color: var(--gold-2); margin-top: 2px; }
+.user-act { margin-top: 16px; }
+.user-act .btn { margin-top: 0; }
+.person.tap { cursor: pointer; }
+.person.tap:hover .pn { color: var(--gold); }
 
 /* ---------- feed ---------- */
 .feed-item { padding: 16px 0; border-bottom: 1px solid var(--line); }
@@ -509,6 +565,36 @@ select option { background: var(--bg-2); color: var(--text); }
 <body data-theme="bar">
 <canvas id="sky"></canvas>
 
+<!-- ============ ログイン画面（ログインするまでアプリは出ない） ============ -->
+<div id="gate">
+  <div class="gate-inner">
+    <div class="masthead">
+      <div class="logo">Night Sip</div>
+      <div class="logo-sub">Cocktail Diary</div>
+      <div class="tagline">その一杯が、特別な夜をつくる。</div>
+    </div>
+
+    <div class="panel gate-panel">
+      <button class="gate-close" id="gClose" aria-label="閉じる">×</button>
+      <p class="auth-lead" id="gLead">ログインすると、飲んだ一杯を記録して残せます。</p>
+      <div class="frow"><label for="gEmail">メール</label>
+        <input type="text" id="gEmail" autocomplete="email" placeholder="you@example.com"></div>
+      <div class="frow"><label for="gPass">パスワード</label>
+        <input type="password" id="gPass" autocomplete="current-password" placeholder="6文字以上"></div>
+      <label class="age-check"><input type="checkbox" id="gAge"> 20歳以上です</label>
+      <div class="auth-btns">
+        <button class="btn sm" id="gLogin">ログイン</button>
+        <button class="btn sm plain" id="gSignup">新規登録</button>
+      </div>
+      <button class="linklike" id="gReset">パスワードを忘れた</button>
+      <div class="auth-note" id="gNote"></div>
+      <button class="btn sm plain" id="gLocal" hidden style="width:100%;margin-top:14px">このまま端末だけで使う</button>
+    </div>
+
+    <p class="note">※ お酒は20歳になってから。体調と量にお気をつけて。</p>
+  </div>
+</div>
+
 <div class="app">
 
   <header class="masthead">
@@ -521,7 +607,7 @@ select option { background: var(--bg-2); color: var(--text); }
   <!-- ============ ① 気分を選ぶ ============ -->
   <section id="s-mood" class="screen active">
     <div class="screen-head">
-      <span class="screen-num">01</span><span class="screen-title">気分を選ぶ</span>
+      <span class="screen-title">気分を選ぶ</span>
       <div class="screen-sub">今の気分にぴったりのカクテルを探そう</div>
     </div>
 
@@ -548,7 +634,7 @@ select option { background: var(--bg-2); color: var(--text); }
   <!-- ============ ② 提案と記録 ============ -->
   <section id="s-suggest" class="screen">
     <div class="screen-head">
-      <span class="screen-num">02</span><span class="screen-title">提案と記録</span>
+      <span class="screen-title">提案と記録</span>
       <div class="screen-sub">おすすめカクテルを見て、飲んだ記録を残そう</div>
     </div>
 
@@ -595,7 +681,7 @@ select option { background: var(--bg-2); color: var(--text); }
   <!-- ============ ③ カレンダー ============ -->
   <section id="s-cal" class="screen">
     <div class="screen-head">
-      <span class="screen-num">03</span><span class="screen-title">カレンダー</span>
+      <span class="screen-title">カレンダー</span>
       <div class="screen-sub">カレンダーから記録を振り返ろう</div>
     </div>
 
@@ -623,7 +709,7 @@ select option { background: var(--bg-2); color: var(--text); }
   <!-- ============ ④ フィード ============ -->
   <section id="s-feed" class="screen">
     <div class="screen-head">
-      <span class="screen-num">04</span><span class="screen-title">フィード</span>
+      <span class="screen-title">フィード</span>
       <div class="screen-sub">フォローしている人が公開した一杯</div>
     </div>
     <div class="panel">
@@ -634,37 +720,36 @@ select option { background: var(--bg-2); color: var(--text); }
   <!-- ============ ⑤ マイページ ============ -->
   <section id="s-my" class="screen">
     <div class="screen-head">
-      <span class="screen-num">04</span><span class="screen-title">マイページ</span>
+      <span class="screen-title">マイページ</span>
       <div class="screen-sub">これまでの一杯と、夜の見え方を選ぶ</div>
     </div>
 
     <div class="panel" id="accountPanel">
       <div class="form-title">アカウント</div>
 
-      <!-- ログアウト中 -->
+      <!-- 端末だけで使っているときの案内 -->
       <div id="authOut">
-        <p class="auth-lead">ログインすると、記録がこの端末の外に保存されます。機種変更しても残り、あとからフォロー機能も使えます。</p>
-        <div class="frow"><label for="aEmail">メール</label><input type="text" id="aEmail" autocomplete="email" placeholder="you@example.com"></div>
-        <div class="frow"><label for="aPass">パスワード</label><input type="password" id="aPass" autocomplete="current-password" placeholder="6文字以上"></div>
-        <label class="age-check"><input type="checkbox" id="aAge"> 20歳以上です</label>
-        <div class="auth-btns">
-          <button class="btn sm" id="btnLogin">ログイン</button>
-          <button class="btn sm plain" id="btnSignup">新規登録</button>
-        </div>
-        <button class="linklike" id="btnReset">パスワードを忘れた</button>
-        <div class="auth-note" id="authNote"></div>
+        <p class="auth-lead">まだログインしていません。気分を選んで提案を見るところまでは、このまま使えます。飲んだ一杯を記録したり、友人とフォローし合うにはアカウントが必要です。</p>
+        <button class="btn sm" id="btnToGate">ログイン・新規登録</button>
       </div>
 
       <!-- ログイン中 -->
       <div id="authIn" hidden>
         <div class="who-row">
-          <img id="myAvatar" class="avatar lg" alt="">
+          <span id="myAvatarBox"></span>
           <div class="who-text">
             <div class="who-name" id="whoName">—</div>
             <div class="who-user" id="whoUser"></div>
             <div class="who-mail" id="whoMail"></div>
           </div>
         </div>
+        <div class="counts">
+          <div class="count"><b id="cRecords">0</b><span>記録</span></div>
+          <button class="count" id="goFollowers"><b id="cFollowers">0</b><span>フォロワー</span>
+            <i class="dot-badge" id="pendDot" hidden></i></button>
+          <button class="count" id="goFollowing"><b id="cFollowing">0</b><span>フォロー中</span></button>
+        </div>
+
         <div class="auth-btns">
           <button class="btn sm plain" id="btnEditProfile">プロフィールを編集</button>
           <button class="btn sm plain" id="btnLogout">ログアウト</button>
@@ -675,7 +760,7 @@ select option { background: var(--bg-2); color: var(--text); }
           <div class="hairline" style="margin:18px 0 14px"></div>
           <div class="frow top"><label>アイコン</label>
             <div class="photo-row">
-              <img id="avatarThumb" class="avatar" alt="">
+              <span id="avatarThumbBox"></span>
               <button class="photo-add" id="avatarAdd" aria-label="アイコンを選ぶ">＋</button>
               <input type="file" id="fAvatar" accept="image/*" hidden>
             </div>
@@ -705,9 +790,6 @@ select option { background: var(--bg-2); color: var(--text); }
         <button class="btn sm" id="btnSearch">探す</button>
       </div>
       <div id="searchResult"></div>
-
-      <div id="followPending"></div>
-      <div id="followLists"></div>
     </div>
 
     <div class="panel">
@@ -748,6 +830,36 @@ select option { background: var(--bg-2); color: var(--text); }
     <div class="panel">
       <div class="form-title">コレクション</div>
       <div id="collection"></div>
+    </div>
+  </section>
+
+  <!-- ============ フォロワー / フォロー中 の一覧 ============ -->
+  <section id="s-people" class="screen">
+    <div class="sub-top">
+      <button class="backlink" id="peopleBack">← 戻る</button>
+      <div class="sub-title" id="peopleTitle">つながり</div>
+    </div>
+    <div class="panel">
+      <div class="segs">
+        <button class="seg" data-seg="followers">フォロワー</button>
+        <button class="seg" data-seg="following">フォロー中</button>
+        <button class="seg" data-seg="requests">申請<i class="seg-badge" id="segBadge" hidden></i></button>
+      </div>
+      <div id="peopleList"></div>
+    </div>
+  </section>
+
+  <!-- ============ 相手のプロフィール ============ -->
+  <section id="s-user" class="screen">
+    <div class="sub-top">
+      <button class="backlink" id="userBack">← 戻る</button>
+    </div>
+    <div class="panel">
+      <div id="userHead"></div>
+    </div>
+    <div class="panel">
+      <div class="form-title" id="userRecTitle">公開している記録</div>
+      <div id="userRecords"></div>
     </div>
   </section>
 
@@ -1306,13 +1418,17 @@ const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAl
 const esc = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2300); }
 function iso(d) { const t = d || new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; }
+const SUB_OF = { 's-people': 's-my', 's-user': 's-my' };   /* 下タブの点灯先 */
 function show(id) {
   $$('.screen').forEach(s => s.classList.toggle('active', s.id === id));
-  $$('.nav button').forEach(b => b.classList.toggle('active', b.dataset.go === id));
+  const lit = SUB_OF[id] || id;
+  $$('.nav button').forEach(b => b.classList.toggle('active', b.dataset.go === lit));
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (id === 's-cal') renderCal();
   if (id === 's-feed') renderFeed();
   if (id === 's-my') renderCollection();
+  if (id === 's-people') renderPeople();
+  if (id === 's-user') renderUser();
 }
 
 /* ============================================================
@@ -1388,6 +1504,11 @@ function resetForm() {
 async function saveNow() {
   const name = $('#fName').value.trim();
   if (!name) { toast('カクテル名を入れてください'); $('#fName').focus(); return; }
+  /* 記録を残すところで登録してもらう。入力した内容は消さずに待たせる */
+  if (!cloudReady()) {
+    showGate(true, `「${name}」を記録するには、アカウントが必要です。入力した内容はそのまま残ります。`, 's-suggest');
+    return;
+  }
   const btn = $('#save');
   btn.disabled = true;
   const ok = await addRecord({
@@ -1422,6 +1543,8 @@ function renderCal() {
   const first = new Date(calY, calM, 1).getDay();
   const len = new Date(calY, calM + 1, 0).getDate();
   const prevLen = new Date(calY, calM, 0).getDate();
+  /* 日付を持たない記録が紛れても画面ごと落ちないようにする */
+  RECORDS = RECORDS.filter(r => r && typeof r.date === 'string' && r.date.includes('-'));
   const by = {}; RECORDS.forEach(r => (by[r.date] = by[r.date] || []).push(r));
 
   let h = '';
@@ -1441,6 +1564,7 @@ function renderCal() {
   $('#stMonth').textContent = RECORDS.filter(r => { const [y,m] = r.date.split('-').map(Number); return y === calY && m === calM + 1; }).length;
   $('#stTotal').textContent = RECORDS.length;
   $('#stKinds').textContent = new Set(RECORDS.map(r => r.cocktail)).size;
+  if (cloudReady()) $('#cRecords').textContent = RECORDS.length;
   renderRecords();
 }
 const starStr = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
@@ -1456,8 +1580,13 @@ function renderRecords() {
   } else $('#recDate').innerHTML = '<span>最近の記録</span>';
 
   if (!list.length) {
-    $('#recList').innerHTML = `<div class="empty">この日の記録はまだありません。<br>気分を選んで、最初の一杯を残しましょう。</div>
-      <button class="btn" onclick="show('s-mood')">気分を選ぶ</button>`;
+    $('#recList').innerHTML = cloudReady()
+      ? `<div class="empty">この日の記録はまだありません。<br>気分を選んで、最初の一杯を残しましょう。</div>
+         <button class="btn" onclick="show('s-mood')">気分を選ぶ</button>`
+      : `<div class="empty">記録を残すにはアカウントが必要です。<br>気分を選んで提案を見るだけなら、登録はいりません。</div>
+         <button class="btn" id="calLogin">ログイン・新規登録</button>`;
+    $('#calLogin')?.addEventListener('click',
+      () => showGate(true, '飲んだ一杯を記録するには、アカウントが必要です。', 's-cal'));
     return;
   }
   $('#recList').innerHTML = list.map(r => {
@@ -1502,7 +1631,9 @@ async function renderFeed() {
   const box = $('#feedList');
   if (!cloudReady()) {
     box.innerHTML = `<div class="empty">ログインすると、フォローした人の一杯が並びます。
-      <br><br><button class="btn" onclick="show('s-my')">マイページへ</button></div>`;
+      <br><br><button class="btn" id="feedLogin">ログイン・新規登録</button></div>`;
+    $('#feedLogin').addEventListener('click',
+      () => showGate(true, 'フォローした人の記録を見るには、アカウントが必要です。', 's-feed'));
     return;
   }
   box.innerHTML = `<div class="empty">読み込んでいます…</div>`;
@@ -1640,7 +1771,21 @@ function drawModeScenes() {
 /* ============================================================
    10.5 AUTH — ログイン画面の動き
    ============================================================ */
-function note(msg) { $('#authNote').textContent = msg || ''; }
+function note(msg) { $('#gNote').textContent = msg || ''; }
+
+/* ログイン画面の出し入れ。出ている間はアプリも下タブも隠す
+   lead を渡すと、なぜ登録が必要かをその場で説明できる */
+let gateReturn = null;
+function showGate(on, lead, returnTo) {
+  $('#gate').hidden = !on;
+  $('.app').style.display = on ? 'none' : '';
+  $('.nav').style.display = on ? 'none' : '';
+  if (on) {
+    $('#gPass').value = ''; note('');
+    $('#gLead').textContent = lead || 'ログインすると、飲んだ一杯を記録して残せます。';
+    gateReturn = returnTo || null;
+  }
+}
 
 /* アイコンがなければ頭文字を出す */
 function avatarHTML(p, cls) {
@@ -1660,9 +1805,7 @@ function renderAccount() {
     $('#whoName').textContent = profile?.display_name || 'Guest';
     $('#whoUser').textContent = profile?.username ? '@' + profile.username : '';
     $('#whoMail').textContent = session.user.email || '';
-    const av = $('#myAvatar');
-    if (profile?.avatar_url) { av.src = profile.avatar_url; av.classList.remove('avatar-fallback'); av.textContent = ''; }
-    else { av.removeAttribute('src'); av.outerHTML = avatarHTML(profile, 'lg').replace('class="avatar', 'id="myAvatar" class="avatar'); }
+    $('#myAvatarBox').innerHTML = avatarHTML(profile, 'lg');
   }
   if (!sb) note('接続設定が未完了です。端末のみに保存されます。');
 }
@@ -1677,7 +1820,7 @@ function openProfileEdit() {
   $('#pName').value = profile?.display_name || '';
   $('#pUser').value = profile?.username || '';
   avatarPick = null;
-  $('#avatarThumb').outerHTML = avatarHTML(profile, '').replace('class="avatar', 'id="avatarThumb" class="avatar');
+  $('#avatarThumbBox').innerHTML = avatarHTML(profile, '');
   $('#profNote').textContent = '';
   $('#profileEdit').hidden = false;
 }
@@ -1697,7 +1840,12 @@ async function saveProfileEdit() {
     const path = `${session.user.id}/avatar.jpg`;
     const { error: upErr } = await sb.storage.from(AVATARS)
       .upload(path, dataURLtoBlob(avatarPick), { contentType: 'image/jpeg', upsert: true });
-    if (upErr) { pn.textContent = 'アイコンを保存できませんでした'; console.error(upErr); return; }
+    if (upErr) {
+      pn.textContent = /bucket/i.test(upErr.message || '')
+        ? 'アイコンの保管庫が見つかりません（phase2-profile.sql が未実行かもしれません）'
+        : 'アイコンを保存できませんでした：' + (upErr.message || '');
+      console.error(upErr); return;
+    }
     const { data } = sb.storage.from(AVATARS).getPublicUrl(path);
     patch.avatar_url = data.publicUrl + '?t=' + Date.now();   /* 差し替えを反映させる */
   }
@@ -1738,8 +1886,8 @@ function relationTo(id) {
   return null;
 }
 
-function personHTML(p, actions) {
-  return `<div class="person">
+function personHTML(p, actions, tappable) {
+  return `<div class="person ${tappable ? 'tap' : ''}" ${tappable ? `data-open="${esc(p.id)}"` : ''}>
     ${avatarHTML(p, '')}
     <div class="pt">
       <div class="pn">${esc(p.display_name || 'Guest')}</div>
@@ -1747,6 +1895,13 @@ function personHTML(p, actions) {
     </div>
     <div class="pacts">${actions}</div>
   </div>`;
+}
+/* 行をタップしたら相手のページへ。ボタンを押したときは開かない */
+function wireOpen(root) {
+  $$('[data-open]').forEach(el => el.addEventListener('click', e => {
+    if (e.target.closest('button') && e.target.closest('button') !== el) return;
+    openUser(el.dataset.open);
+  }));
 }
 
 async function doSearch() {
@@ -1766,80 +1921,192 @@ async function doSearch() {
               : rel === 'pending'  ? `<span class="state">申請中</span>`
               : rel === 'incoming' ? `<span class="state">相手から申請中</span>`
               : `<button class="btn plain" data-req="${p.id}">申請する</button>`;
-    return personHTML(p, act);
+    return personHTML(p, act, true);
   }).join('');
+  wireOpen(box);
+  wireRequest();
+}
 
-  $$('[data-req]').forEach(b => b.addEventListener('click', async () => {
+function wireRequest() {
+  $$('[data-req]').forEach(b => b.addEventListener('click', async e => {
+    e.stopPropagation();
     b.disabled = true;
     const { error } = await sb.from('follows').insert(
       { follower_id: session.user.id, followee_id: b.dataset.req, status: 'pending' });
     if (error) { toast('申請できませんでした'); console.error(error); b.disabled = false; return; }
-    await loadFollows(); renderFollows(); doSearch();
+    await loadFollows(); renderFollows();
+    if ($('#s-user').classList.contains('active')) renderUser();
+    else doSearch();
     toast('申請しました');
   }));
 }
 
+/* 件数の表示。押すと一覧へ */
 function renderFollows() {
-  /* 自分宛ての承認待ち */
-  const pend = followIn.filter(r => r.status === 'pending');
-  $('#followPending').innerHTML = !pend.length ? '' :
-    `<div class="sub-head">承認待ち<span class="badge">${pend.length}</span></div>` +
-    pend.map(r => personHTML(r.follower,
-      `<button class="btn" data-acc="${r.follower_id}">承認</button>
-       <button class="btn plain" data-rej="${r.follower_id}">拒否</button>`)).join('');
-
   const following = followOut.filter(r => r.status === 'accepted');
   const followers = followIn.filter(r => r.status === 'accepted');
-  const sent = followOut.filter(r => r.status === 'pending');
+  const pend = followIn.filter(r => r.status === 'pending');
+  $('#cRecords').textContent   = RECORDS.length;
+  $('#cFollowers').textContent = followers.length;
+  $('#cFollowing').textContent = following.length;
+  $('#pendDot').hidden = !pend.length;
+  $('#segBadge').hidden = !pend.length;
+  if ($('#s-people').classList.contains('active')) renderPeople();
+}
 
+/* ============================================================
+   10.8 PEOPLE — フォロワー / フォロー中 / 申請
+   ============================================================ */
+let peopleTab = 'followers';
+
+function openPeople(tab) { peopleTab = tab; show('s-people'); }
+
+function renderPeople() {
+  $$('.seg').forEach(s => s.classList.toggle('on', s.dataset.seg === peopleTab));
+  $('#peopleTitle').textContent =
+    peopleTab === 'followers' ? 'フォロワー' : peopleTab === 'following' ? 'フォロー中' : '申請';
+
+  const uid = session.user.id;
+  const following = followOut.filter(r => r.status === 'accepted');
+  const followers = followIn.filter(r => r.status === 'accepted');
+  const inPend    = followIn.filter(r => r.status === 'pending');
+  const outPend   = followOut.filter(r => r.status === 'pending');
+  const box = $('#peopleList');
   let h = '';
-  if (sent.length) h += `<div class="sub-head">申請中<span class="badge">${sent.length}</span></div>` +
-    sent.map(r => personHTML(r.followee,
-      `<button class="btn plain" data-cancel="${r.followee_id}">取り消す</button>`)).join('');
 
-  h += `<div class="sub-head">フォロー中<span class="badge">${following.length}</span></div>`;
-  h += following.length ? following.map(r => personHTML(r.followee,
-        `<button class="btn plain" data-unf="${r.followee_id}">解除</button>`)).join('')
-     : `<div class="hint">まだ誰もフォローしていません</div>`;
+  if (peopleTab === 'followers') {
+    h = followers.length
+      ? followers.map(r => personHTML(r.follower,
+          `<button class="btn plain" data-kick="${r.follower_id}">外す</button>`, true)).join('')
+      : `<div class="empty">まだフォロワーはいません</div>`;
+  } else if (peopleTab === 'following') {
+    h = following.length
+      ? following.map(r => personHTML(r.followee,
+          `<button class="btn plain" data-unf="${r.followee_id}">解除</button>`, true)).join('')
+      : `<div class="empty">まだ誰もフォローしていません</div>`;
+  } else {
+    if (inPend.length) h += `<div class="sub-head">承認を待っている人<span class="badge">${inPend.length}</span></div>` +
+      inPend.map(r => personHTML(r.follower,
+        `<button class="btn" data-acc="${r.follower_id}">承認</button>
+         <button class="btn plain" data-rej="${r.follower_id}">削除</button>`, true)).join('');
+    if (outPend.length) h += `<div class="sub-head">こちらから申請中<span class="badge">${outPend.length}</span></div>` +
+      outPend.map(r => personHTML(r.followee,
+        `<button class="btn plain" data-cancel="${r.followee_id}">取り消す</button>`, true)).join('');
+    if (!h) h = `<div class="empty">申請はありません</div>`;
+  }
+  box.innerHTML = h;
+  wireOpen(box);
 
-  h += `<div class="sub-head">フォロワー<span class="badge">${followers.length}</span></div>`;
-  h += followers.length ? followers.map(r => personHTML(r.follower,
-        `<button class="btn plain" data-kick="${r.follower_id}">外す</button>`)).join('')
-     : `<div class="hint">まだフォロワーはいません</div>`;
-
-  $('#followLists').innerHTML = h;
-
-  const uid = () => session.user.id;
-  const after = async () => { await loadFollows(); renderFollows(); };
-
-  $$('[data-acc]').forEach(b => b.addEventListener('click', async () => {
-    b.disabled = true;
-    await sb.from('follows').update({ status: 'accepted' })
-      .eq('follower_id', b.dataset.acc).eq('followee_id', uid());
-    await after(); toast('承認しました');
+  const after = async () => { await loadFollows(); renderFollows(); renderPeople(); };
+  const act = (key, fn, confirmMsg) => $$(`[data-${key}]`).forEach(b => b.addEventListener('click', async e => {
+    e.stopPropagation();
+    if (confirmMsg && !confirm(confirmMsg)) return;
+    b.disabled = true; await fn(b.dataset[key]); await after();
   }));
-  $$('[data-rej]').forEach(b => b.addEventListener('click', async () => {
-    b.disabled = true;
-    await sb.from('follows').delete().eq('follower_id', b.dataset.rej).eq('followee_id', uid());
-    await after(); toast('拒否しました');
-  }));
-  $$('[data-cancel]').forEach(b => b.addEventListener('click', async () => {
-    b.disabled = true;
-    await sb.from('follows').delete().eq('follower_id', uid()).eq('followee_id', b.dataset.cancel);
-    await after(); toast('申請を取り消しました');
-  }));
-  $$('[data-unf]').forEach(b => b.addEventListener('click', async () => {
+
+  act('acc', async id => {
+    await sb.from('follows').update({ status: 'accepted' }).eq('follower_id', id).eq('followee_id', uid);
+    toast('承認しました');
+  });
+  act('rej', async id => {
+    await sb.from('follows').delete().eq('follower_id', id).eq('followee_id', uid);
+    toast('削除しました');
+  });
+  act('cancel', async id => {
+    await sb.from('follows').delete().eq('follower_id', uid).eq('followee_id', id);
+    toast('申請を取り消しました');
+  });
+  act('unf', async id => {
+    await sb.from('follows').delete().eq('follower_id', uid).eq('followee_id', id);
+    toast('解除しました');
+  }, 'フォローを解除しますか？');
+  act('kick', async id => {
+    await sb.from('follows').delete().eq('follower_id', id).eq('followee_id', uid);
+    toast('外しました');
+  }, 'この人を外すと、あなたの公開記録が見えなくなります。よろしいですか？');
+}
+
+/* ============================================================
+   10.9 USER — 相手のページ
+   ============================================================ */
+let viewUser = null, backFrom = 's-my';
+
+async function openUser(id) {
+  if (id === session.user.id) { show('s-my'); return; }
+  backFrom = $('#s-people').classList.contains('active') ? 's-people' : 's-my';
+  const { data } = await sb.from('profiles').select(PCOLS).eq('id', id).single();
+  if (!data) { toast('見つかりませんでした'); return; }
+  viewUser = data;
+  show('s-user');
+}
+
+async function renderUser() {
+  if (!viewUser) return;
+  const rel = relationTo(viewUser.id);
+  const act = rel === 'accepted'
+      ? `<button class="btn plain" id="uUnfollow">フォロー中 — 解除する</button>`
+    : rel === 'pending'
+      ? `<button class="btn plain" id="uCancel">申請中 — 取り消す</button>`
+    : rel === 'incoming'
+      ? `<button class="btn plain" data-req="${viewUser.id}">この人をフォローする</button>`
+      : `<button class="btn" data-req="${viewUser.id}">フォローを申請する</button>`;
+
+  $('#userHead').innerHTML = `<div class="user-head">
+      ${avatarHTML(viewUser, 'lg')}
+      <div class="ut">
+        <div class="un">${esc(viewUser.display_name || 'Guest')}</div>
+        <div class="uu">@${esc(viewUser.username)}</div>
+      </div>
+    </div>
+    <div class="user-act">${act}</div>`;
+
+  wireRequest();
+  const after = async () => { await loadFollows(); renderFollows(); renderUser(); };
+  $('#uUnfollow')?.addEventListener('click', async () => {
     if (!confirm('フォローを解除しますか？')) return;
-    b.disabled = true;
-    await sb.from('follows').delete().eq('follower_id', uid()).eq('followee_id', b.dataset.unf);
+    await sb.from('follows').delete().eq('follower_id', session.user.id).eq('followee_id', viewUser.id);
     await after(); toast('解除しました');
-  }));
-  $$('[data-kick]').forEach(b => b.addEventListener('click', async () => {
-    if (!confirm('この人を外すと、あなたの公開記録が見えなくなります。よろしいですか？')) return;
-    b.disabled = true;
-    await sb.from('follows').delete().eq('follower_id', b.dataset.kick).eq('followee_id', uid());
-    await after(); toast('外しました');
-  }));
+  });
+  $('#uCancel')?.addEventListener('click', async () => {
+    await sb.from('follows').delete().eq('follower_id', session.user.id).eq('followee_id', viewUser.id);
+    await after(); toast('取り消しました');
+  });
+
+  const box = $('#userRecords');
+  if (rel !== 'accepted') {
+    $('#userRecTitle').textContent = '記録';
+    box.innerHTML = `<div class="empty">フォローが承認されると、この人が公開した記録が見られます。</div>`;
+    return;
+  }
+  $('#userRecTitle').textContent = '公開している記録';
+  box.innerHTML = `<div class="empty">読み込んでいます…</div>`;
+
+  const { data, error } = await sb.from('records').select('*')
+    .eq('user_id', viewUser.id).eq('visibility', 'followers')
+    .order('drank_on', { ascending: false }).limit(50);
+  if (error) { box.innerHTML = `<div class="empty">読み込めませんでした</div>`; console.error(error); return; }
+  const list = data.map(fromRow);
+  if (!list.length) { box.innerHTML = `<div class="empty">公開している記録はまだありません</div>`; return; }
+
+  box.innerHTML = list.map(r => {
+    const m = MOOD_BY_ID[r.mood] || { plain: '—', color: 'var(--gold)' };
+    const c = COCKTAILS.find(x => x.jp === r.cocktail || x.n === r.cocktail);
+    const d = new Date(r.date + 'T21:00:00');
+    return `<div class="rec">
+      <div class="thumb">${r.photo_path ? `<img data-photo="${esc(r.photo_path)}" alt="">`
+                          : (c ? glassSVG(c, 56) : '')}</div>
+      <div class="info">
+        <div class="rn">${esc(c ? c.n : r.cocktail)}</div>
+        ${c ? `<div class="c-kana">${esc(c.jp)}</div>` : ''}
+        ${r.hide_bar ? `<div class="rb"><span class="masked">場所は非公開</span></div>`
+          : r.bar ? `<div class="rb">${ICON.pin}${esc(r.bar)}</div>` : ''}
+        <span class="mood-chip" style="color:${m.color}">☆ ${m.plain}</span>
+        ${r.memo ? `<div class="rmemo">${esc(r.memo)}</div>` : ''}
+        <div class="rstars">${starStr(r.rating)}</div>
+        <div class="rb" style="color:var(--faint)">${d.getMonth() + 1}/${d.getDate()}</div>
+      </div></div>`;
+  }).join('');
+  fillPhotos(box);
 }
 
 async function loadProfile() {
@@ -1859,24 +2126,26 @@ async function afterAuthChange(justSignedIn) {
 }
 
 async function doLogin() {
-  const email = $('#aEmail').value.trim(), pass = $('#aPass').value;
-  if (!sb) { note('接続設定が未完了です'); return; }
+  const email = $('#gEmail').value.trim(), pass = $('#gPass').value;
+  if (!sb) { note('接続できません。時間をおいて開き直してください。'); return; }
   if (!email || !pass) { note('メールとパスワードを入れてください'); return; }
   note('ログイン中…');
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) { note(error.message); return; }
-  session = data.session; note('');
-  $('#aPass').value = '';
+  session = data.session;
   await afterAuthChange(true);
-  toast('ログインしました');
+  const back = gateReturn;
+  showGate(false);
+  show(back || 's-mood');
+  toast(back === 's-suggest' ? 'そのまま記録できます' : 'おかえりなさい');
 }
 
 async function doSignup() {
-  const email = $('#aEmail').value.trim(), pass = $('#aPass').value;
-  if (!sb) { note('接続設定が未完了です'); return; }
+  const email = $('#gEmail').value.trim(), pass = $('#gPass').value;
+  if (!sb) { note('接続できません。時間をおいて開き直してください。'); return; }
   if (!email || !pass) { note('メールとパスワードを入れてください'); return; }
   if (pass.length < 6) { note('パスワードは6文字以上にしてください'); return; }
-  if (!$('#aAge').checked) { note('20歳以上の確認にチェックを入れてください'); return; }
+  if (!$('#gAge').checked) { note('20歳以上の確認にチェックを入れてください'); return; }
   note('登録中…');
   const { data, error } = await sb.auth.signUp({ email, password: pass });
   if (error) { note(error.message); return; }
@@ -1884,22 +2153,26 @@ async function doSignup() {
     note('確認メールを送りました。リンクを開いてからログインしてください。');
     return;
   }
-  session = data.session; note('');
-  $('#aPass').value = '';
+  session = data.session;
   await afterAuthChange(true);
-  toast('登録しました');
+  const back = gateReturn;
+  showGate(false);
+  show(back || 's-mood');
+  toast(back === 's-suggest' ? 'そのまま記録できます' : 'ようこそ');
 }
 
 async function doLogout() {
+  if (!confirm('ログアウトしますか？')) return;
   await sb.auth.signOut();
   session = null; profile = null; urlCache.clear();
+  followOut = []; followIn = [];
   await afterAuthChange(false);
-  toast('ログアウトしました');
+  showGate(true);
 }
 
 async function doReset() {
-  const email = $('#aEmail').value.trim();
-  if (!sb) { note('接続設定が未完了です'); return; }
+  const email = $('#gEmail').value.trim();
+  if (!sb) { note('接続できません'); return; }
   if (!email) { note('メールを入れてから押してください'); return; }
   const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
   note(error ? error.message : '再設定メールを送りました');
@@ -1931,11 +2204,14 @@ async function init() {
   $$('.nav button').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
   $$('.mode-card').forEach(c => c.addEventListener('click', () => { setTheme(c.dataset.mode); toast(c.querySelector('.mode-jp').textContent + ' に切り替えました'); }));
 
-  $('#btnLogin').addEventListener('click', doLogin);
-  $('#btnSignup').addEventListener('click', doSignup);
+  $('#gLogin').addEventListener('click', doLogin);
+  $('#gSignup').addEventListener('click', doSignup);
+  $('#gReset').addEventListener('click', doReset);
+  $('#gPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  $('#gLocal').addEventListener('click', () => { showGate(false); show('s-mood'); });
+  $('#gClose').addEventListener('click', () => { showGate(false); show(gateReturn || 's-mood'); });
   $('#btnLogout').addEventListener('click', doLogout);
-  $('#btnReset').addEventListener('click', doReset);
-  $('#aPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  $('#btnToGate').addEventListener('click', () => showGate(true, null, 's-my'));
 
   $('#btnEditProfile').addEventListener('click', openProfileEdit);
   $('#btnCancelProfile').addEventListener('click', () => { $('#profileEdit').hidden = true; });
@@ -1943,21 +2219,30 @@ async function init() {
   $('#avatarAdd').addEventListener('click', () => $('#fAvatar').click());
   $('#fAvatar').addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
+    $('#profNote').textContent = '読み込んでいます…';
     shrink(f, url => {
       avatarPick = url;
-      const t = $('#avatarThumb');
-      t.outerHTML = `<img id="avatarThumb" class="avatar" src="${url}" alt="">`;
+      $('#avatarThumbBox').innerHTML = `<img class="avatar" src="${url}" alt="">`;
+      $('#profNote').textContent = '保存を押すと反映されます';
     }, 400);
+    e.target.value = '';                       /* 同じ写真を選び直せるようにする */
   });
   $('#btnSearch').addEventListener('click', doSearch);
   $('#uSearch').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+  $('#goFollowers').addEventListener('click', () => openPeople('followers'));
+  $('#goFollowing').addEventListener('click', () => openPeople('following'));
+  $('#peopleBack').addEventListener('click', () => show('s-my'));
+  $('#userBack').addEventListener('click', () => show(backFrom));
+  $$('.seg').forEach(s => s.addEventListener('click', () => { peopleTab = s.dataset.seg; renderPeople(); }));
 
   renderMoonToday();
   setTheme(lsGet(K_THEME) || 'bar');
   window.addEventListener('resize', drawSky);
 
   /* 前回のログインが残っていれば引き継ぐ */
-  if (initSupabase()) {
+  const ready = initSupabase();
+  if (ready) {
     const { data } = await sb.auth.getSession();
     session = data.session || null;
     if (session) { await loadProfile(); await loadFollows(); }
@@ -1967,6 +2252,11 @@ async function init() {
   renderAccount();
   if (cloudReady()) renderFollows();
   renderCal();
+
+  /* 提案までは誰でも見られる。登録を求めるのは記録するときだけ */
+  if (!ready) $('#gLocal').hidden = false;   /* 接続できないときの逃げ道 */
+  showGate(false);
+  show('s-mood');
 }
 window.show = show;          /* HTML 内の onclick から呼ぶため */
 init();

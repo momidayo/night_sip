@@ -575,7 +575,7 @@ button.count:hover { border-color: var(--line-strong); box-shadow: var(--glow); 
 .person.tap:hover .pn { color: var(--gold); }
 
 /* ---------- feed ---------- */
-.feed-item { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.feed-item { position: relative; padding: 16px 0; border-bottom: 1px solid var(--line); }
 .feed-item:first-child { padding-top: 0; }
 .feed-item:last-child { border-bottom: none; padding-bottom: 0; }
 .feed-head { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
@@ -658,12 +658,39 @@ button.count:hover { border-color: var(--line-strong); box-shadow: var(--glow); 
 .note { font-size: 11.5px; color: var(--faint); line-height: 2; text-align: center; margin-top: 16px; }
 
 /* ---------- day sheet ---------- */
-#dayModal, #pickModal, #menuModal {
+#dayModal, #pickModal, #menuModal, #notifModal {
   position: fixed; inset: 0; z-index: 30;
   display: flex; align-items: center; justify-content: center; padding: 20px 16px;
 }
-#pickModal, #menuModal { z-index: 32; }
-#dayModal[hidden], #pickModal[hidden], #menuModal[hidden] { display: none; }
+#pickModal, #menuModal, #notifModal { z-index: 32; }
+#dayModal[hidden], #pickModal[hidden], #menuModal[hidden], #notifModal[hidden] { display: none; }
+
+/* ---------- notifications ---------- */
+.bell {
+  position: absolute; top: 18px; left: 0; width: 38px; height: 38px;
+  background: none; border: 1px solid var(--line); border-radius: 12px;
+  cursor: pointer; display: grid; place-items: center; padding: 0;
+  transition: border-color .2s, box-shadow .2s;
+}
+.bell svg { width: 19px; height: 19px; stroke: var(--gold); fill: none; stroke-width: 1.2; stroke-linejoin: round; }
+.bell:hover { border-color: var(--line-strong); box-shadow: var(--glow); }
+.bell-dot {
+  position: absolute; top: 6px; right: 6px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--gold); box-shadow: var(--glow);
+}
+.notif-sheet { max-width: 380px; }
+.notif {
+  display: flex; align-items: center; gap: 12px; padding: 13px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.notif:last-child { border-bottom: none; }
+.notif.unread { background: var(--accent-soft, rgba(229,190,118,.07)); border-radius: 10px; padding-left: 10px; padding-right: 10px; }
+.notif .nt { flex: 1; min-width: 0; font-size: 13px; line-height: 1.6; }
+.notif .nt b { font-weight: 500; color: var(--text); }
+.notif .nt .nsub { font-size: 11px; color: var(--faint); margin-top: 2px; }
+.notif .nacts { display: flex; gap: 7px; flex: none; }
+.notif .btn { margin-top: 0; width: auto; padding: 6px 12px; font-size: 11.5px; letter-spacing: .04em; }
+.notif .heart { flex: none; color: var(--gold); font-size: 14px; }
 
 /* ---------- hamburger + menu ---------- */
 .screen-head { position: relative; }
@@ -889,6 +916,10 @@ body.sheet-open { overflow: hidden; }
     <div class="screen-head">
       <span class="screen-title">マイページ</span>
       <div class="screen-sub">これまでの一杯と、つながり</div>
+      <button class="bell" id="btnNotif" aria-label="通知">
+        <svg viewBox="0 0 24 24"><path d="M18 16v-5a6 6 0 1 0-12 0v5l-1.6 2.4h15.2z"/><path d="M9.5 20.5a2.6 2.6 0 0 0 5 0"/></svg>
+        <i class="bell-dot" id="notifDot" hidden></i>
+      </button>
       <button class="hamburger" id="btnMenu" aria-label="メニュー"><span></span><span></span><span></span></button>
     </div>
 
@@ -1074,6 +1105,16 @@ body.sheet-open { overflow: hidden; }
     <button class="modal-close" id="modalClose" aria-label="閉じる">×</button>
     <div class="rec-date" id="recDate"></div>
     <div id="recList"></div>
+  </div>
+</div>
+
+<!-- ============ 通知 ============ -->
+<div id="notifModal" hidden>
+  <div class="modal-back" id="notifBack"></div>
+  <div class="modal-sheet notif-sheet" role="dialog" aria-modal="true" aria-label="通知">
+    <button class="modal-close" id="notifClose" aria-label="閉じる">×</button>
+    <div class="form-title">通知</div>
+    <div id="notifList"></div>
   </div>
 </div>
 
@@ -1985,8 +2026,7 @@ function renderRecords() {
     const m = MOOD_BY_ID[r.mood] || { plain:'—', color:'var(--gold)' };
     const c = COCKTAILS.find(x => x.jp === r.cocktail || x.n === r.cocktail);
     return `<div class="rec">
-      ${cloudReady() ? `<button class="fav-star ${r.is_favorite ? 'on' : ''}" data-fav="${r.id}"
-          aria-label="お気に入り" aria-pressed="${!!r.is_favorite}">${r.is_favorite ? '★' : '☆'}</button>` : ''}
+      ${cloudReady() ? favStarHTML(r.id, r.is_favorite) : ''}
       <div class="thumb">${r.photo_path ? `<img data-photo="${esc(r.photo_path)}" alt="">`
                           : r.photo ? `<img src="${r.photo}" alt="">`
                           : (c ? glassSVG(c, 56) : '')}</div>
@@ -2015,14 +2055,7 @@ function renderRecords() {
     await removeRecord(b.dataset.del);
     renderCal(); toast('削除しました');
   }));
-  $$('[data-fav]').forEach(b => b.addEventListener('click', async () => {
-    const r = RECORDS.find(x => String(x.id) === b.dataset.fav);
-    const next = !r.is_favorite;
-    b.disabled = true;
-    await setFavorite(r.id, next);
-    renderRecords(); renderRecent();
-    toast(next ? 'お気に入りに入れました' : 'お気に入りから外しました');
-  }));
+  wireFavStars($('#recList'));
   fillPhotos($('#recList'));
 }
 
@@ -2065,6 +2098,26 @@ function jumpToDate(date) {
 /* ============================================================
    8.5 SCREEN 04 — feed
    ============================================================ */
+/* お気に入りの星。押すと ☆ ⇄ ★ が入れ替わる。
+   いまの状態はボタン自身が持つので、カレンダーでもフィードでも同じように動く */
+function favStarHTML(id, on) {
+  return `<button class="fav-star ${on ? 'on' : ''}" data-fav="${esc(id)}" data-on="${!!on}"
+    aria-pressed="${!!on}" aria-label="お気に入り">${on ? '★' : '☆'}</button>`;
+}
+
+function wireFavStars(root) {
+  root.querySelectorAll('[data-fav]').forEach(b => b.addEventListener('click', async e => {
+    e.stopPropagation();
+    const id = b.dataset.fav, next = b.dataset.on !== 'true';
+    b.disabled = true;
+    await setFavorite(id, next);
+    b.outerHTML = favStarHTML(id, next);
+    wireFavStars(root);                 /* 差し替えた分を繋ぎ直す */
+    renderRecent();                     /* 直近の記録の★も揃える */
+    toast(next ? 'お気に入りに入れました' : 'お気に入りから外しました');
+  }));
+}
+
 /* いいねボタン。押した人は塗りつぶしのハートになる */
 function likeBtn(id) {
   const n = likeCount[id] || 0, on = likedByMe.has(id);
@@ -2109,7 +2162,7 @@ async function renderFeed() {
   }
 
   box.innerHTML = list.map(r => feedItemHTML(r, session.user.id)).join('');
-  wireLikes(box);
+  wireLikes(box); wireFavStars(box);
   fillPhotos(box);
 }
 
@@ -2125,6 +2178,7 @@ function feedItemHTML(r, me) {
       ? (r.bar ? `<div class="rb">${ICON.pin}${esc(r.bar)}${own && r.hide_bar ? ' <span class="masked">（他の人には非公開）</span>' : ''}</div>` : '')
       : `<div class="rb"><span class="masked">場所は非公開</span></div>`;
     return `<article class="feed-item ${own ? 'mine' : ''}">
+      ${own ? favStarHTML(r.id, r.is_favorite) : ''}
       <div class="feed-head">
         ${avatarHTML(a, '')}
         <div class="ft">
@@ -2202,7 +2256,7 @@ async function renderLiked() {
   }
   await loadLikes(list.map(r => r.id));
   box.innerHTML = list.map(r => feedItemHTML(r, session.user.id)).join('');
-  wireLikes(box);
+  wireLikes(box); wireFavStars(box);
   fillPhotos(box);
 }
 
@@ -2472,6 +2526,120 @@ function renderFollows() {
 }
 
 /* ============================================================
+   10.75 NOTIFICATIONS — いいねとフォロー
+   既読は「最後に開いた時刻」を端末に覚えておき、
+   それより新しいものを未読として数える。
+   ============================================================ */
+let notifs = [];
+const K_SEEN = () => `nightsip.notifSeen.${session.user.id}`;
+
+async function loadNotifs() {
+  notifs = [];
+  if (!cloudReady()) return;
+  const me = session.user.id;
+
+  /* 自分の記録に、他の人が付けたいいね */
+  const { data, error } = await sb.from('likes')
+    .select(`created_at, user_id,
+             liker:profiles!likes_user_id_fkey(${PCOLS}),
+             record:records!likes_record_id_fkey!inner(id, cocktail_name, user_id)`)
+    .eq('record.user_id', me).neq('user_id', me)
+    .order('created_at', { ascending: false }).limit(40);
+  if (error) console.error(error);
+  (data || []).forEach(l => {
+    if (l.liker) notifs.push({ kind: 'like', at: l.created_at, who: l.liker, what: l.record });
+  });
+
+  /* フォロー関係はすでに読み込み済みのものを使う */
+  followIn.forEach(f => {
+    if (!f.follower) return;
+    notifs.push({ kind: f.status === 'pending' ? 'request' : 'follower', at: f.created_at, who: f.follower });
+  });
+
+  notifs.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+}
+
+function unreadCount() {
+  const seen = lsGet(K_SEEN()) || '';
+  return notifs.filter(n => String(n.at || '') > seen).length;
+}
+function renderBell() {
+  const n = cloudReady() ? unreadCount() : 0;
+  $('#notifDot').hidden = n === 0;
+}
+
+function renderNotifs() {
+  const box = $('#notifList');
+  const seen = lsGet(K_SEEN()) || '';
+  if (!notifs.length) {
+    box.innerHTML = `<div class="empty">通知はまだありません。</div>`;
+    return;
+  }
+  box.innerHTML = notifs.map(n => {
+    const fresh = String(n.at || '') > seen;
+    const name = esc(n.who.display_name || n.who.username || 'Guest');
+    const when = n.at ? new Date(n.at) : null;
+    const sub = when ? `${when.getMonth() + 1}月${when.getDate()}日` : '';
+    let text = '', acts = '';
+    if (n.kind === 'like') {
+      text = `<b>${name}</b> さんが <b>${esc(n.what?.cocktail_name || '記録')}</b> にいいねしました`;
+      acts = `<span class="heart">♥</span>`;
+    } else if (n.kind === 'request') {
+      text = `<b>${name}</b> さんからフォロー申請が届いています`;
+      acts = `<button class="btn" data-nacc="${esc(n.who.id)}">承認</button>
+              <button class="btn plain" data-nrej="${esc(n.who.id)}">削除</button>`;
+    } else {
+      text = `<b>${name}</b> さんがあなたをフォローしました`;
+      acts = relationTo(n.who.id)
+        ? `<span class="state">${relationTo(n.who.id) === 'accepted' ? 'フォロー中' : '申請中'}</span>`
+        : `<button class="btn plain" data-nback="${esc(n.who.id)}">フォローバック</button>`;
+    }
+    return `<div class="notif ${fresh ? 'unread' : ''}" data-open="${esc(n.who.id)}">
+      ${avatarHTML(n.who, '')}
+      <div class="nt">${text}<div class="nsub">@${esc(n.who.username || '')}${sub ? ' · ' + sub : ''}</div></div>
+      <div class="nacts">${acts}</div>
+    </div>`;
+  }).join('');
+
+  wireOpen(box);
+  const after = async () => { await loadFollows(); await loadNotifs(); renderFollows(); renderNotifs(); renderBell(); };
+  const act = (key, fn) => box.querySelectorAll(`[data-${key}]`).forEach(b =>
+    b.addEventListener('click', async e => {
+      e.stopPropagation(); b.disabled = true;
+      await fn(b.dataset[key]); await after();
+    }));
+
+  act('nacc', async id => {
+    await sb.from('follows').update({ status: 'accepted' })
+      .eq('follower_id', id).eq('followee_id', session.user.id);
+    toast('承認しました');
+  });
+  act('nrej', async id => {
+    await sb.from('follows').delete().eq('follower_id', id).eq('followee_id', session.user.id);
+    toast('削除しました');
+  });
+  act('nback', async id => {
+    await sb.from('follows').insert(
+      { follower_id: session.user.id, followee_id: id, status: 'pending' });
+    toast('申請しました');
+  });
+}
+
+async function openNotifs() {
+  $('#notifModal').hidden = false;
+  document.body.classList.add('sheet-open');
+  $('#notifList').innerHTML = `<div class="empty">読み込んでいます…</div>`;
+  await loadNotifs();
+  renderNotifs();
+  lsSet(K_SEEN(), new Date().toISOString());   /* 開いた時点までを既読にする */
+  renderBell();
+}
+function closeNotifs() {
+  $('#notifModal').hidden = true;
+  document.body.classList.remove('sheet-open');
+}
+
+/* ============================================================
    10.8 PEOPLE — フォロワー / フォロー中 / 申請
    ============================================================ */
 let peopleTab = 'followers';
@@ -2639,7 +2807,8 @@ async function afterAuthChange(justSignedIn) {
   } else { followOut = []; followIn = []; }
   await refreshRecords();
   renderAccount(); renderCal(); renderCollection();
-  if (cloudReady()) renderFollows();
+  if (cloudReady()) { renderFollows(); await loadNotifs(); }
+  renderBell();
 }
 
 async function doLogin() {
@@ -2761,7 +2930,8 @@ async function init() {
 
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    if (!$('#menuModal').hidden) openMenu(false);
+    if (!$('#notifModal').hidden) closeNotifs();
+    else if (!$('#menuModal').hidden) openMenu(false);
     else if (!$('#pickModal').hidden) closePick();
     else if (sheetOpen()) closeDay();
   });
@@ -2798,6 +2968,9 @@ async function init() {
     $('#menuModal').hidden = !on;
     document.body.classList.toggle('sheet-open', on);
   };
+  $('#btnNotif').addEventListener('click', openNotifs);
+  $('#notifClose').addEventListener('click', closeNotifs);
+  $('#notifBack').addEventListener('click', closeNotifs);
   $('#btnMenu').addEventListener('click', () => openMenu(true));
   $('#menuClose').addEventListener('click', () => openMenu(false));
   $('#menuBack').addEventListener('click', () => openMenu(false));
@@ -2827,7 +3000,8 @@ async function init() {
   }
   await refreshRecords();
   renderAccount();
-  if (cloudReady()) renderFollows();
+  if (cloudReady()) { renderFollows(); await loadNotifs(); }
+  renderBell();
   renderCal();
 
   /* 提案までは誰でも見られる。登録を求めるのは記録するときだけ */
